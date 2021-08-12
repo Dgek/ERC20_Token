@@ -1,6 +1,7 @@
 // see: https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/tree/master/test/token/ERC777
 
 const Token = artifacts.require('Token.sol');
+const { deployProxy } = require('@openzeppelin/truffle-upgrades');
 const ERC777SenderRecipientMock = artifacts.require('ERC777SenderRecipientMockUpgradeable');
 
 const { BN, expectEvent, expectRevert, singletons, constants } = require('@openzeppelin/test-helpers');
@@ -19,36 +20,65 @@ const { ZERO_ADDRESS } = constants;
 const initialSupply = new BN(process.env.TOKEN_INITIAL_SUPPLY);
 console.log(process.env.TOKEN_NAME, process.env.TOKEN_SYMBOL, initialSupply.toString());
 
-const userData = web3.utils.sha3('OZ777TestData');
+const dataInception = web3.utils.sha3('inception');
+const dataInUserTransaction = web3.utils.sha3('OZ777TestdataInUserTransaction');
 const dataInOperatorTransaction = web3.utils.sha3('OZ777TestdataInOperatorTransaction');
 
 // Test that Token operates correctly as an ERC20Basic token.
-contract('ERC20Basic Token', (accounts) =>
+contract('Basic Test', (accounts) =>
 {
     const [registryFunder, treasury, defaultOperatorA, defaultOperatorB, newOperator, anyone] = accounts;
-
+    console.log("accounts: ", registryFunder, treasury, defaultOperatorA, defaultOperatorB, newOperator, anyone);
     // Handy struct for future operations and tests
     const tokenArgs = {
         name: process.env.TOKEN_NAME,
         symbol: process.env.TOKEN_SYMBOL,
         defaultOperators: [defaultOperatorA, defaultOperatorB],
         initialSupply: initialSupply,
-        treasury: treasury
+        treasury: treasury,
+        data: dataInception,
+        operationData: dataInception
     };
-
-    const dataInUserTransaction = web3.utils.sha3('OZ777TestdataInUserTransaction');
-    const dataInOperatorTransaction = web3.utils.sha3('OZ777TestdataInOperatorTransaction');
 
     beforeEach(async () =>
     {
         this.erc1820 = await singletons.ERC1820Registry(registryFunder); // only for dev network
-        this.token = await Token.new({ from: treasury });
-        await this.token.initialize(tokenArgs.name, tokenArgs.symbol, tokenArgs.defaultOperators, tokenArgs.initialSupply.toString(), tokenArgs.treasury);
+        const useProxy = false;
+
+        if (useProxy)
+        {
+            this.token = await deployProxy(Token, [tokenArgs.name, tokenArgs.symbol, tokenArgs.defaultOperators, tokenArgs.initialSupply, tokenArgs.treasury, tokenArgs.data, tokenArgs.operationData], { treasury, initializer: 'initialize' });
+        }
+        else
+        {
+            this.token = await Token.new({ from: treasury });
+
+            let logs;
+            ({ logs } = await this.token.initialize(tokenArgs.name, tokenArgs.symbol, tokenArgs.defaultOperators, tokenArgs.initialSupply.toString(), tokenArgs.treasury, tokenArgs.data, tokenArgs.operationData));
+
+            expectEvent.inLogs(logs, 'Minted', {
+                operator: registryFunder,
+                to: treasury,
+                amount: tokenArgs.initialSupply,
+                data: dataInception,
+                operatorData: dataInception
+            });
+        }
     });
 
-    it('log', async () =>
+    it('upgrade smart-contract', async () =>
     {
         console.log(tokenArgs);
+        /* https://docs.openzeppelin.com/upgrades-plugins/1.x/
+        it('works before and after upgrading', async function ()
+        {
+            const instance = await upgrades.deployProxy(Box, [42]);
+            assert.strictEqual(await instance.retrieve(), 42);
+
+            await upgrades.upgradeProxy(instance.address, BoxV2);
+            assert.strictEqual(await instance.retrieve(), 42);
+        });
+        */
     });
 
     describe('basic information', () =>
@@ -108,7 +138,17 @@ contract('ERC20Basic Token', (accounts) =>
     {
         context('for an account with no tokens', () =>
         {
-            it('returns anyone == zero', async () =>
+            it(`returns ZERO_ADDRESS ${ZERO_ADDRESS} == zero`, async () =>
+            {
+                expect(await this.token.balanceOf(ZERO_ADDRESS)).to.be.bignumber.equal('0');
+            });
+
+            it(`returns registryFunder ${registryFunder} == zero`, async () =>
+            {
+                expect(await this.token.balanceOf(registryFunder)).to.be.bignumber.equal('0');
+            });
+
+            it(`returns anyone ${anyone} == zero`, async () =>
             {
                 expect(await this.token.balanceOf(anyone)).to.be.bignumber.equal('0');
             });
@@ -116,7 +156,7 @@ contract('ERC20Basic Token', (accounts) =>
 
         context('for an account with tokens', () =>
         {
-            it('returns treasury == initialSupply', async () =>
+            it(`returns treasury ${treasury} == initialSupply ${initialSupply}`, async () =>
             {
                 expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(initialSupply);
             });
@@ -125,10 +165,15 @@ contract('ERC20Basic Token', (accounts) =>
 
     describe('with no ERC777TokensSender and no ERC777TokensRecipient implementers', () =>
     {
-        context('with treasury', async () =>
+        it('with treasury directly', () =>
         {
-            await shouldBehaveLikeERC777DirectSendBurn(treasury, anyone, dataInUserTransaction);
+            shouldBehaveLikeERC777DirectSendBurn(this.token, treasury, anyone, dataInUserTransaction);
         });
+        /*
+        context('with self operator', () =>
+        {
+            shouldBehaveLikeERC777OperatorSendBurn(treasury, anyone, treasury, dataInUserTransaction, dataInOperatorTransaction);
+        });
+        */
     });
 });
-

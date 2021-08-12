@@ -105,4 +105,5 @@ dist
 
 # Token specifics
 build
+_tests
 .openzeppelin

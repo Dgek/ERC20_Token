@@ -5,6 +5,8 @@ const { singletons } = require('@openzeppelin/test-helpers');
 
 const Token = artifacts.require('Token');
 const { deployProxy } = require('@openzeppelin/truffle-upgrades');
+const Web3 = require('web3');
+const dataInception = web3.utils.sha3('inception');
 
 module.exports = async function (deployer, network, accounts)
 {
@@ -18,8 +20,10 @@ module.exports = async function (deployer, network, accounts)
             process.env.TOKEN_NAME,
             process.env.TOKEN_SYMBOL,
             [accounts[1]],
-            process.env.TOKEN_INITIAL_SUPPLY,
-            accounts[0] // '0x6c2339b46F41a06f09CA0051ddAD54D1e582bA77' // accounts[0]
+            new web3.utils.BN(process.env.TOKEN_INITIAL_SUPPLY),
+            accounts[0], // '0x6c2339b46F41a06f09CA0051ddAD54D1e582bA77' // accounts[0]
+            dataInception,
+            dataInception
         ];
 
         const instance = await deployProxy(Token, args, { deployer, initializer: 'initialize' });

@@ -22,7 +22,8 @@
         "migrate-ropsten": "truffle migrate --network rospsten",
         "solium": "solium -d contracts/ --fix",
         "test-all": "truffle test",
-        "test-token": "truffle test ./test/token/BasicTest.js",
+        "test-basic": "truffle test ./test/token/BasicTest.js",
+        "test-direct-send-burn": "truffle test ./test/token/DirectSendAndBurn.js",
         "clean": "rm -rf ./build && rm -rf *.abi && rm -rf *.bin"
     },
     "repository": {

@@ -17,13 +17,23 @@ contract Token is Initializable, ERC777Upgradeable {
         string memory symbol,
         address[] memory defaultOperators,
         uint256 initialSupply,
-        address owner
+        address treasury,
+        bytes memory data,
+        bytes memory operatorData
     ) public virtual initializer {
-        __Token_init(name, symbol, defaultOperators, initialSupply, owner);
+        __Token_init(
+            name,
+            symbol,
+            defaultOperators,
+            initialSupply,
+            treasury,
+            data,
+            operatorData
+        );
     }
 
     /**
-     * @dev Mints `initialSupply` amount of token and transfers them to `owner`.
+     * @dev Mints `initialSupply` amount of token and transfers them to `treasury`.
      *
      * See {ERC777-constructor}.
      */
@@ -32,18 +42,22 @@ contract Token is Initializable, ERC777Upgradeable {
         string memory symbol,
         address[] memory defaultOperators,
         uint256 initialSupply,
-        address owner
+        address treasury,
+        bytes memory data,
+        bytes memory operatorData
     ) internal initializer {
         __Context_init_unchained();
         __ERC777_init_unchained(name, symbol, defaultOperators);
-        __Token_init_unchained(initialSupply, owner);
+        __Token_init_unchained(initialSupply, treasury, data, operatorData);
     }
 
-    function __Token_init_unchained(uint256 initialSupply, address owner)
-        internal
-        initializer
-    {
-        _mint(owner, initialSupply, "", "");
+    function __Token_init_unchained(
+        uint256 initialSupply,
+        address treasury,
+        bytes memory data,
+        bytes memory operatorData
+    ) internal initializer {
+        _mint(treasury, initialSupply, data, operatorData);
     }
 
     uint256[50] private __gap;
