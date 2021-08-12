@@ -17,7 +17,7 @@
         "flatten-Token": "truffle-flattener ./contracts/Token.sol > ./flattened/Token.sol",
         "flatten-TokenV2": "truffle-flattener ./contracts/TokenV2.sol > ./flattened/TokenV2.sol",
         "ganache-dev": "ganache-cli -i 1111 -a 10 -d -m 'stomach wage stem judge control beauty glue chapter cannon kitchen pilot orbit'",
-        "ganache": "ganache-cli -i 1111",
+        "ganache": "ganache-cli -i 1111 -a 10",
         "migrate-development": "truffle migrate --network development",
         "migrate-ropsten": "truffle migrate --network rospsten",
         "solium": "solium -d contracts/ --fix",

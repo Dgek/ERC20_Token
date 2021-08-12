@@ -1,34 +1,49 @@
 // see: https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/tree/master/test/token/ERC777
 
 const Token = artifacts.require('Token.sol');
+const ERC777SenderRecipientMock = artifacts.require('ERC777SenderRecipientMockUpgradeable');
 
 const { BN, expectEvent, expectRevert, singletons, constants } = require('@openzeppelin/test-helpers');
+const { expect } = require('chai');
+
+const {
+    shouldBehaveLikeERC777DirectSendBurn,
+    shouldBehaveLikeERC777OperatorSendBurn,
+    shouldBehaveLikeERC777UnauthorizedOperatorSendBurn,
+    shouldBehaveLikeERC777InternalMint,
+    shouldBehaveLikeERC777SendBurnMintInternalWithReceiveHook,
+    shouldBehaveLikeERC777SendBurnWithSendHook,
+} = require('./ERC777.behavior');
+
 const { ZERO_ADDRESS } = constants;
 const initialSupply = new BN(process.env.TOKEN_INITIAL_SUPPLY);
-console.log(process.env.TOKEN_NAME, process.env.TOKEN_SYMBOL, initialSupply);
+console.log(process.env.TOKEN_NAME, process.env.TOKEN_SYMBOL, initialSupply.toString());
 
 const userData = web3.utils.sha3('OZ777TestData');
-const operatorData = web3.utils.sha3('OZ777TestOperatorData');
+const dataInOperatorTransaction = web3.utils.sha3('OZ777TestdataInOperatorTransaction');
 
 // Test that Token operates correctly as an ERC20Basic token.
 contract('ERC20Basic Token', (accounts) =>
 {
-    const [owner, operator, user] = accounts;
+    const [registryFunder, treasury, defaultOperatorA, defaultOperatorB, newOperator, anyone] = accounts;
 
     // Handy struct for future operations and tests
     const tokenArgs = {
         name: process.env.TOKEN_NAME,
         symbol: process.env.TOKEN_SYMBOL,
-        defaultOperators: [operator],
-        initialSupply: process.env.TOKEN_INITIAL_SUPPLY,
-        owner: owner
+        defaultOperators: [defaultOperatorA, defaultOperatorB],
+        initialSupply: initialSupply,
+        treasury: treasury
     };
+
+    const dataInUserTransaction = web3.utils.sha3('OZ777TestdataInUserTransaction');
+    const dataInOperatorTransaction = web3.utils.sha3('OZ777TestdataInOperatorTransaction');
 
     beforeEach(async () =>
     {
-        const erc1820 = await singletons.ERC1820Registry(owner); // only for dev network
-        this.token = await Token.new({ from: owner });
-        await this.token.initialize(tokenArgs.name, tokenArgs.symbol, tokenArgs.defaultOperators, tokenArgs.initialSupply, tokenArgs.owner);
+        this.erc1820 = await singletons.ERC1820Registry(registryFunder); // only for dev network
+        this.token = await Token.new({ from: treasury });
+        await this.token.initialize(tokenArgs.name, tokenArgs.symbol, tokenArgs.defaultOperators, tokenArgs.initialSupply.toString(), tokenArgs.treasury);
     });
 
     it('log', async () =>
@@ -36,153 +51,84 @@ contract('ERC20Basic Token', (accounts) =>
         console.log(tokenArgs);
     });
 
-    describe('basic data', () =>
+    describe('basic information', () =>
     {
-        it('has getters for the name, symbol, and decimals', async () =>
+        it('returns the name', async () =>
         {
-            const name = await this.token.name();
-            assert.equal(name, tokenArgs.name);
-            const symbol = await this.token.symbol();
-            assert.equal(symbol, tokenArgs.symbol);
-            const decimals = await this.token.decimals();
-            assert.equal(decimals, 18); // ERC777 standard
+            expect(await this.token.name()).to.equal(tokenArgs.name);
+        });
+
+        it('returns the symbol', async () =>
+        {
+            expect(await this.token.symbol()).to.equal(tokenArgs.symbol);
+        });
+
+        it('returns a granularity of 1', async () =>
+        {
+            expect(await this.token.granularity()).to.be.bignumber.equal('1');
+        });
+
+        it('returns the default operators', async () =>
+        {
+            expect(await this.token.defaultOperators()).to.deep.equal(tokenArgs.defaultOperators);
+        });
+
+        it('default operators are operators for all accounts', async () =>
+        {
+            for (const operator of tokenArgs.defaultOperators)
+            {
+                expect(await this.token.isOperatorFor(operator, anyone)).to.equal(true);
+            }
+        });
+
+        it('returns the total supply', async () =>
+        {
+            expect(await this.token.totalSupply()).to.be.bignumber.equal(initialSupply);
+        });
+
+        it('returns 18 when decimals is called', async () =>
+        {
+            expect(await this.token.decimals()).to.be.bignumber.equal('18');
+        });
+
+        it('the ERC777Token interface is registered in the registry', async () =>
+        {
+            expect(await this.erc1820.getInterfaceImplementer(this.token.address, web3.utils.soliditySha3('ERC777Token')))
+                .to.equal(this.token.address);
+        });
+
+        it('the ERC20Token interface is registered in the registry', async () =>
+        {
+            expect(await this.erc1820.getInterfaceImplementer(this.token.address, web3.utils.soliditySha3('ERC20Token')))
+                .to.equal(this.token.address);
         });
     });
 
-    describe('total supply', () =>
-    {
-        it('returns the total amount of tokens at the beginning', async () =>
-        {
-            const token = await Token.deployed();
-            const totalSupply = await token.totalSupply();
-
-            assert.equal(tokenArgs.initialSupply, totalSupply);
-        });
-    });
-    /*
     describe('balanceOf', () =>
     {
-        describe('when the requested account has no tokens', () =>
+        context('for an account with no tokens', () =>
         {
-            it('returns zero', async () =>
+            it('returns anyone == zero', async () =>
             {
-                const balance = await this.token.balanceOf(user);
-
-                assert.equal(balance, 0);
+                expect(await this.token.balanceOf(anyone)).to.be.bignumber.equal('0');
             });
         });
 
-        describe('when the requested account has some tokens', () =>
+        context('for an account with tokens', () =>
         {
-            it('returns the total amount of tokens', async () =>
+            it('returns treasury == initialSupply', async () =>
             {
-                const balance = await this.token.balanceOf(owner);
-
-                assert.equal(balance, 100);
+                expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(initialSupply);
             });
         });
     });
 
-    it('the total supply is hold by the owner', async () =>
+    describe('with no ERC777TokensSender and no ERC777TokensRecipient implementers', () =>
     {
-        const totalSupply = await this.token.totalSupply();
-        const ownerBalance = await this.token.balanceOf(owner);
-        //console.log(`totalSupply: ${totalSupply} ownerBalance: ${ownerBalance}`);
-        assert.equal(ownerBalance, totalSupply);
-
-        await expectEvent.inConstruction(this.token, 'Transfer', {
-            from: ZERO_ADDRESS,
-            to: owner,
-            value: totalSupply,
+        context('with treasury', async () =>
+        {
+            await shouldBehaveLikeERC777DirectSendBurn(treasury, anyone, dataInUserTransaction);
         });
     });
-
-        it('half of the total supply is transfer to operator', async () =>
-        {
-            const totalSupply = await this.token.totalSupply();
-            const ownerBalance = await this.token.balanceOf(owner);
-            console.log(`totalSupply: ${totalSupply} ownerBalance: ${ownerBalance}`);
-            const halfTotalSupply = totalSupply * 0.5;
-            assert.equal(ownerBalance, totalSupply);
-
-            await expectEvent.inConstruction(this.token, 'send', {
-                recipient: user,
-                amount: halfTotalSupply,
-                data: "user data"
-            });
-
-            const ownerBalanceAfterTransfer = await this.token.balanceOf(owner);
-            const operatorBalance = await this.token.balanceOf(operator);
-            console.log(`totalSupply: ${totalSupply} ownerBalance: ${ownerBalanceAfterTransfer} operatorBalance: ${operatorBalance}`);
-            assert.equal(ownerBalanceAfterTransfer, halfTotalSupply);
-            assert.equal(operatorBalance, halfTotalSupply);
-        });
-
-          it('allows operator burn', async () => {
-            const ownerBalance = await this.token.balanceOf(owner);
-            const data = web3.utils.sha3('Simple777Data');
-            const operatorData = web3.utils.sha3('Simple777OperatorData');
-
-            await this.token.authorizeOperator(operator, { from: owner });
-            await this.token.operatorBurn(owner, ownerBalance, data, operatorData, { from: operator });
-            (await this.token.balanceOf(owner)).should.be.bignumber.equal("0");
-
-          });
-
-            describe('transfer', () =>
-            {
-                describe('when the recipient is not the zero address', () =>
-                {
-                    const to = recipient;
-
-                    describe('when the sender does not have enough balance', () =>
-                    {
-                        const amount = 101;
-
-                        it('reverts', async () =>
-                        {
-                            await assertRevert(this.token.transfer(to, amount, { from: owner }));
-                        });
-                    });
-
-                    describe('when the sender has enough balance', () =>
-                    {
-                        const amount = 100;
-
-                        it('transfers the requested amount', async () =>
-                        {
-                            await this.token.transfer(to, amount, { from: owner });
-
-                            const senderBalance = await this.token.balanceOf(owner);
-                            assert.equal(senderBalance, 0);
-
-                            const recipientBalance = await this.token.balanceOf(to);
-                            assert.equal(recipientBalance, amount);
-                        });
-
-                        it('emits a transfer event', async () =>
-                        {
-                            const { logs } = await this.token.transfer(to, amount, { from: owner });
-
-                            assert.equal(logs.length, 1);
-                            assert.equal(logs[0].event, 'Transfer');
-                            assert.equal(logs[0].args.from, owner);
-                            assert.equal(logs[0].args.to, to);
-                            assert.equal(logs[0].args.value, amount);
-                        });
-                    });
-                });
-
-                describe('when the recipient is the zero address', () =>
-                {
-                    const to = ZERO_ADDRESS;
-
-                    it('reverts', async () =>
-                    {
-                        await assertRevert(this.token.transfer(to, 100, { from: owner }));
-                    });
-                });
-            });
-                */
 });
 

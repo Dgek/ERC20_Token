@@ -71,7 +71,7 @@ contract('ERC777', function (accounts)
                 });
             });
         });
-        /*
+
         it('does not emit AuthorizedOperator events for default operators', async function ()
         {
             await expectEvent.notEmitted.inConstruction(this.token, 'AuthorizedOperator');
@@ -721,6 +721,5 @@ contract('ERC777', function (accounts)
 
             expect(externalSendHook).to.be.lt(internalBeforeHook);
         });
-        */
     });
 });
