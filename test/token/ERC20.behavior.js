@@ -13,7 +13,7 @@ function shouldBehaveLikeERC20(errorPrefix, initialSupply, initialHolder, recipi
             expect(totalSupply).to.be.bignumber.equal(initialSupply);
         });
     });
-
+    /*
     describe('balanceOf', function ()
     {
         describe('when the requested account has no tokens', function ()
@@ -194,6 +194,7 @@ function shouldBehaveLikeERC20(errorPrefix, initialSupply, initialHolder, recipi
             },
         );
     });
+    */
 }
 
 function shouldBehaveLikeERC20Transfer(errorPrefix, from, to, balance, transfer)

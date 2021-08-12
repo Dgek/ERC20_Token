@@ -1,4 +1,3 @@
-/*
 // see: https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/tree/master/test/token/ERC777
 
 const Token = artifacts.require('Token.sol');
@@ -60,7 +59,7 @@ contract('ERC20Basic Token', (accounts) =>
             assert.equal(tokenArgs.initialSupply, totalSupply);
         });
     });
-
+    /*
     describe('balanceOf', () =>
     {
         describe('when the requested account has no tokens', () =>
@@ -184,6 +183,6 @@ contract('ERC20Basic Token', (accounts) =>
                     });
                 });
             });
+                */
 });
 
-            */
