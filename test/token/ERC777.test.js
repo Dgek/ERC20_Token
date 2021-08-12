@@ -24,9 +24,9 @@ contract('ERC777', function (accounts)
 {
     const [registryFunder, holder, defaultOperatorA, defaultOperatorB, newOperator, anyone] = accounts;
 
-    const initialSupply = new BN('10000');
-    const name = 'ERC777Test';
-    const symbol = '777T';
+    const initialSupply = new BN(process.env.TOKEN_INITIAL_SUPPLY);
+    const name = process.env.TOKEN_NAME;
+    const symbol = process.env.TOKEN_SYMBOL;
     const data = web3.utils.sha3('OZ777TestData');
     const operatorData = web3.utils.sha3('OZ777TestOperatorData');
 
