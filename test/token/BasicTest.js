@@ -8,8 +8,8 @@ const { BN, expectEvent, expectRevert, singletons, constants } = require('@openz
 const { expect } = require('chai');
 
 const {
-    shouldBehaveLikeERC777DirectSendBurn,
-    shouldBehaveLikeERC777OperatorSendBurn,
+    withNoERC777TokensSenderOrRecipient,
+
     shouldBehaveLikeERC777UnauthorizedOperatorSendBurn,
     shouldBehaveLikeERC777InternalMint,
     shouldBehaveLikeERC777SendBurnMintInternalWithReceiveHook,
@@ -25,7 +25,7 @@ const dataInUserTransaction = web3.utils.sha3('OZ777TestdataInUserTransaction');
 const dataInOperatorTransaction = web3.utils.sha3('OZ777TestdataInOperatorTransaction');
 
 // Test that Token operates correctly as an ERC20Basic token.
-contract('Basic Test', (accounts) =>
+contract(process.env.TOKEN_NAME, (accounts) =>
 {
     const [registryFunder, treasury, defaultOperatorA, defaultOperatorB, newOperator, anyone] = accounts;
     console.log("accounts: ", registryFunder, treasury, defaultOperatorA, defaultOperatorB, newOperator, anyone);
@@ -68,7 +68,7 @@ contract('Basic Test', (accounts) =>
 
     it('upgrade smart-contract', async () =>
     {
-        console.log(tokenArgs);
+        //console.log(tokenArgs);
         /* https://docs.openzeppelin.com/upgrades-plugins/1.x/
         it('works before and after upgrading', async function ()
         {
@@ -163,17 +163,8 @@ contract('Basic Test', (accounts) =>
         });
     });
 
-    describe('with no ERC777TokensSender and no ERC777TokensRecipient implementers', () =>
+    it('with no ERC777TokensSender and no ERC777TokensRecipient implementers', () =>
     {
-        it('with treasury directly', () =>
-        {
-            shouldBehaveLikeERC777DirectSendBurn(this.token, treasury, anyone, dataInUserTransaction);
-        });
-        /*
-        context('with self operator', () =>
-        {
-            shouldBehaveLikeERC777OperatorSendBurn(treasury, anyone, treasury, dataInUserTransaction, dataInOperatorTransaction);
-        });
-        */
+        withNoERC777TokensSenderOrRecipient(this.token, treasury, anyone, dataInUserTransaction, dataInOperatorTransaction);
     });
 });
