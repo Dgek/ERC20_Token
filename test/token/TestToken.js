@@ -66,6 +66,15 @@ contract(process.env.TOKEN_NAME, (accounts) =>
         }
     });
 
+    it(`symbol ${tokenArgs.symbol}`, () => { });
+    it(`initialSupply ${tokenArgs.initialSupply.toString()}`, () => { });
+    it(`registryFunder ${registryFunder}`, () => { });
+    it(`treasury ${tokenArgs.treasury}`, () => { });
+    it(`first operator ${tokenArgs.defaultOperators[0]}`, () => { });
+    it(`second operator ${tokenArgs.defaultOperators[1]}`, () => { });
+    it(`new operator ${newOperator}`, () => { });
+    it(`user account ${anyone}`, () => { });
+
     it('upgrade smart-contract', async () =>
     {
         //console.log(tokenArgs);
@@ -148,6 +157,16 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 expect(await this.token.balanceOf(registryFunder)).to.be.bignumber.equal('0');
             });
 
+            it(`returns first operator ${tokenArgs.defaultOperators[0]} == zero`, async () =>
+            {
+                expect(await this.token.balanceOf(tokenArgs.defaultOperators[0])).to.be.bignumber.equal('0');
+            });
+
+            it(`returns second operator ${tokenArgs.defaultOperators[1]} == zero`, async () =>
+            {
+                expect(await this.token.balanceOf(tokenArgs.defaultOperators[1])).to.be.bignumber.equal('0');
+            });
+
             it(`returns anyone ${anyone} == zero`, async () =>
             {
                 expect(await this.token.balanceOf(anyone)).to.be.bignumber.equal('0');
@@ -163,8 +182,19 @@ contract(process.env.TOKEN_NAME, (accounts) =>
         });
     });
 
-    it('with no ERC777TokensSender and no ERC777TokensRecipient implementers', () =>
+    it('with no ERC777TokensSender and no ERC777TokensRecipient implementers', async () =>
     {
-        withNoERC777TokensSenderOrRecipient(this.token, treasury, anyone, dataInUserTransaction, dataInOperatorTransaction);
+        let balances = {}
+        balances.initialSupply = (await this.token.initialSupply()).toString();
+        balances.registryFunder = (await this.token.balanceOf(registryFunder)).toString();
+        balances.treasury = (await this.token.balanceOf(treasury)).toString();
+        balances.anyone = (await this.token.balanceOf(anyone)).toString();
+        balances.defaultOperatorA = (await this.token.balanceOf(defaultOperatorA)).toString();
+        balances.defaultOperatorB = (await this.token.balanceOf(defaultOperatorB)).toString();
+        balances.newOperator = (await this.token.balanceOf(newOperator)).toString();
+        console.log(balances);
+
+        withNoERC777TokensSenderOrRecipient(this.token, treasury, anyone, defaultOperatorA, defaultOperatorB, newOperator, dataInUserTransaction, dataInOperatorTransaction);
+
     });
 });
