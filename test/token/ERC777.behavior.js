@@ -676,22 +676,22 @@ const withNoERC777TokensSenderOrRecipient = (token, treasury, anyone, defaultOpe
             shouldBehaveLikeERC777OperatorSendBurn(token, treasury, anyone, treasury, dataInUserTransaction, dataInOperatorTransaction);
         });
 
-        /*
         context(`with first default operator ${defaultOperatorA}`, () =>
         {
-            shouldBehaveLikeERC777OperatorSendBurn(token, treasury, anyone, defaultOperatorA, dataInUserTransaction, operatorData);
+            shouldBehaveLikeERC777OperatorSendBurn(token, treasury, anyone, defaultOperatorA, dataInUserTransaction, dataInOperatorTransaction);
         });
- 
+
         context(`with second default operator ${defaultOperatorB}`, () =>
         {
-            shouldBehaveLikeERC777OperatorSendBurn(token, treasury, anyone, defaultOperatorB, dataInUserTransaction, operatorData);
+            shouldBehaveLikeERC777OperatorSendBurn(token, treasury, anyone, defaultOperatorB, dataInUserTransaction, dataInOperatorTransaction);
         });
- 
+
         context(`before authorizing a new operator ${newOperator}`, () =>
         {
-            shouldBehaveLikeERC777UnauthorizedOperatorSendBurn(token, treasury, anyone, newOperator, dataInUserTransaction, operatorData);
+            shouldBehaveLikeERC777UnauthorizedOperatorSendBurn(token, treasury, anyone, newOperator, dataInUserTransaction, dataInOperatorTransaction);
         });
- 
+
+        /*
         context(`with new authorized operator ${newOperator}`, () =>
         {
             beforeEach(async () =>
@@ -699,7 +699,7 @@ const withNoERC777TokensSenderOrRecipient = (token, treasury, anyone, defaultOpe
                 await this.token.authorizeOperator(newOperator, { from: treasury });
             });
  
-            shouldBehaveLikeERC777OperatorSendBurn(token, treasury, anyone, newOperator, dataInUserTransaction, operatorData);
+            shouldBehaveLikeERC777OperatorSendBurn(token, treasury, anyone, newOperator, dataInUserTransaction, dataInOperatorTransaction);
  
             context('with revoked operator ${newOperator}', () =>
             {
@@ -708,7 +708,7 @@ const withNoERC777TokensSenderOrRecipient = (token, treasury, anyone, defaultOpe
                     await this.token.revokeOperator(newOperator, { from: treasury });
                 });
  
-                shouldBehaveLikeERC777UnauthorizedOperatorSendBurn(token, treasury, anyone, newOperator, dataInUserTransaction, operatorData);
+                shouldBehaveLikeERC777UnauthorizedOperatorSendBurn(token, treasury, anyone, newOperator, dataInUserTransaction, dataInOperatorTransaction);
             });
         });
         */
