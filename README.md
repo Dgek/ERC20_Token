@@ -3,4 +3,4 @@
 2. cp .env.example .env
 3. Configure the .env
 4. Execute the task "ganache"
-5. In another terminal execute the tasks: "compile", "migrate" and "test-token"
+5. In another terminal execute the tasks: "compile", "migrate-development" and "test"

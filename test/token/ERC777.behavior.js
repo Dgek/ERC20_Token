@@ -6,22 +6,23 @@ const { expect } = require('chai');
 
 const ERC777SenderRecipientMock = artifacts.require('ERC777SenderRecipientMockUpgradeable');
 
-const shouldBehaveLikeERC777DirectSendBurn = (token, holder, recipient, data) =>
+const shouldBehaveLikeERC777DirectSendBurnMint = (token, holder, recipient, data) =>
 {
     shouldBehaveLikeERC777DirectSend(token, holder, recipient, data);
     shouldBehaveLikeERC777DirectBurn(token, holder, data);
 }
 
-const shouldBehaveLikeERC777OperatorSendBurn = (token, holder, recipient, operator, data, operatorData) =>
+const shouldBehaveLikeERC777OperatorSendBurnMint = (token, holder, recipient, operator, data, operatorData) =>
 {
     shouldBehaveLikeERC777OperatorSend(token, holder, recipient, operator, data, operatorData);
     shouldBehaveLikeERC777OperatorBurn(token, holder, operator, data, operatorData);
 }
 
-const shouldBehaveLikeERC777UnauthorizedOperatorSendBurn = (token, holder, recipient, operator, data, operatorData) =>
+const shouldBehaveLikeERC777UnauthorizedOperatorSendBurnMint = (token, holder, recipient, operator, data, operatorData) =>
 {
     shouldBehaveLikeERC777UnauthorizedOperatorSend(token, holder, recipient, operator, data, operatorData);
     shouldBehaveLikeERC777UnauthorizedOperatorBurn(token, holder, operator, data, operatorData);
+    shouldBehaveLikeERC777UnauthorizedOperatorMint(token, holder, operator, data, operatorData);
 }
 
 const shouldBehaveLikeERC777DirectSend = (token, holder, recipient, data) =>
@@ -114,11 +115,21 @@ const shouldBehaveLikeERC777OperatorSend = (token, holder, recipient, operator, 
 
 const shouldBehaveLikeERC777UnauthorizedOperatorSend = (token, holder, recipient, operator, data, operatorData) =>
 {
-    describe('operator send', () =>
+    describe(`unauthorized operator send for holder ${holder}`, () =>
     {
-        it('reverts', async () =>
+        it('reverts send 0', async () =>
         {
             await expectRevert.unspecified(token.operatorSend(holder, recipient, new BN('0'), data, operatorData));
+        });
+
+        it('reverts send 1', async () =>
+        {
+            await expectRevert.unspecified(token.operatorSend(holder, recipient, new BN('1'), data, operatorData));
+        });
+
+        it(`reverts send 1 with caller ${operator}`, async () =>
+        {
+            await expectRevert.unspecified(token.operatorSend(holder, recipient, new BN('1'), data, operatorData, { from: operator }));
         });
     });
 }
@@ -200,11 +211,42 @@ const shouldBehaveLikeERC777OperatorBurn = (token, holder, operator, data, opera
 
 const shouldBehaveLikeERC777UnauthorizedOperatorBurn = (token, holder, operator, data, operatorData) =>
 {
-    describe('unauthorized operator burn', () =>
+    describe(`unauthorized operator burn for holder ${holder}`, () =>
     {
-        it('reverts', async () =>
+        it('reverts burn 0', async () =>
         {
             await expectRevert.unspecified(token.operatorBurn(holder, new BN('0'), data, operatorData));
+        });
+
+        it('reverts burn 1', async () =>
+        {
+            await expectRevert.unspecified(token.operatorBurn(holder, new BN('1'), data, operatorData));
+        });
+
+        it(`reverts burn 1 with caller ${operator}`, async () =>
+        {
+            await expectRevert.unspecified(token.operatorBurn(holder, new BN('1'), data, operatorData, { from: operator }));
+        });
+    });
+}
+
+const shouldBehaveLikeERC777UnauthorizedOperatorMint = (token, holder, operator, data, operatorData) =>
+{
+    describe(`unauthorized operator mint for holder ${holder}`, () =>
+    {
+        it('reverts mint 0', async () =>
+        {
+            await expectRevert.unspecified(token.operatorMint(holder, new BN('0'), data, operatorData));
+        });
+
+        it('reverts mint 1', async () =>
+        {
+            await expectRevert.unspecified(token.operatorMint(holder, new BN('1'), data, operatorData));
+        });
+
+        it(`reverts mint 1 with caller ${operator}`, async () =>
+        {
+            await expectRevert.unspecified(token.operatorMint(holder, new BN('1'), data, operatorData, { from: operator }));
         });
     });
 }
@@ -615,7 +657,7 @@ const restoreBalance = (token, holder) =>
             const toMint = initialSupply.addn(-balanceCurrent);
             const data = web3.utils.sha3('afterEach');
             const operatorData = web3.utils.sha3('test');
-            await token.mint(holder, toMint, data, operatorData, { from: holder });
+            await token.operatorMint(holder, toMint, data, operatorData, { from: holder });
             const balanceEnd = await token.balanceOf(holder);
 
             //console.log(`holder: ${holder}\ninitialSupply: ${initialSupply.toString()}\nbalanceCurrent: ${balanceCurrent.toString()}\ntoMint: ${toMint.toString()}\nbalanceEnd: ${balanceEnd.toString()}`)
@@ -668,27 +710,27 @@ const withNoERC777TokensSenderOrRecipient = (token, treasury, anyone, defaultOpe
     {
         context(`with treasury ${treasury} directly`, () =>
         {
-            shouldBehaveLikeERC777DirectSendBurn(token, treasury, anyone, dataInUserTransaction);
+            shouldBehaveLikeERC777DirectSendBurnMint(token, treasury, anyone, dataInUserTransaction);
         });
 
         context(`with treasury ${treasury} as operator`, () =>
         {
-            shouldBehaveLikeERC777OperatorSendBurn(token, treasury, anyone, treasury, dataInUserTransaction, dataInOperatorTransaction);
+            shouldBehaveLikeERC777OperatorSendBurnMint(token, treasury, anyone, treasury, dataInUserTransaction, dataInOperatorTransaction);
         });
 
         context(`with first default operator ${defaultOperatorA}`, () =>
         {
-            shouldBehaveLikeERC777OperatorSendBurn(token, treasury, anyone, defaultOperatorA, dataInUserTransaction, dataInOperatorTransaction);
+            shouldBehaveLikeERC777OperatorSendBurnMint(token, treasury, anyone, defaultOperatorA, dataInUserTransaction, dataInOperatorTransaction);
         });
 
         context(`with second default operator ${defaultOperatorB}`, () =>
         {
-            shouldBehaveLikeERC777OperatorSendBurn(token, treasury, anyone, defaultOperatorB, dataInUserTransaction, dataInOperatorTransaction);
+            shouldBehaveLikeERC777OperatorSendBurnMint(token, treasury, anyone, defaultOperatorB, dataInUserTransaction, dataInOperatorTransaction);
         });
 
         context(`before authorizing a new operator ${newOperator}`, () =>
         {
-            shouldBehaveLikeERC777UnauthorizedOperatorSendBurn(token, treasury, anyone, newOperator, dataInUserTransaction, dataInOperatorTransaction);
+            shouldBehaveLikeERC777UnauthorizedOperatorSendBurnMint(token, treasury, anyone, newOperator, dataInUserTransaction, dataInOperatorTransaction);
         });
 
         /*
@@ -699,7 +741,7 @@ const withNoERC777TokensSenderOrRecipient = (token, treasury, anyone, defaultOpe
                 await this.token.authorizeOperator(newOperator, { from: treasury });
             });
  
-            shouldBehaveLikeERC777OperatorSendBurn(token, treasury, anyone, newOperator, dataInUserTransaction, dataInOperatorTransaction);
+            shouldBehaveLikeERC777OperatorSendBurnMint(token, treasury, anyone, newOperator, dataInUserTransaction, dataInOperatorTransaction);
  
             context('with revoked operator ${newOperator}', () =>
             {
@@ -708,7 +750,7 @@ const withNoERC777TokensSenderOrRecipient = (token, treasury, anyone, defaultOpe
                     await this.token.revokeOperator(newOperator, { from: treasury });
                 });
  
-                shouldBehaveLikeERC777UnauthorizedOperatorSendBurn(token, treasury, anyone, newOperator, dataInUserTransaction, dataInOperatorTransaction);
+                shouldBehaveLikeERC777UnauthorizedOperatorSendBurnMint(token, treasury, anyone, newOperator, dataInUserTransaction, dataInOperatorTransaction);
             });
         });
         */
@@ -719,7 +761,6 @@ const withNoERC777TokensSenderOrRecipient = (token, treasury, anyone, defaultOpe
 module.exports = {
     withNoERC777TokensSenderOrRecipient,
 
-    shouldBehaveLikeERC777UnauthorizedOperatorSendBurn,
     shouldBehaveLikeERC777InternalMint,
     shouldBehaveLikeERC777SendBurnMintInternalWithReceiveHook,
     shouldBehaveLikeERC777SendBurnWithSendHook,

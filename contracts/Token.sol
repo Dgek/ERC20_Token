@@ -88,12 +88,16 @@ contract Token is Initializable, ERC777Upgradeable {
      * - if `account` is a contract, it must implement the {IERC777Recipient}
      * interface.
      */
-    function mint(
+    function operatorMint(
         address account,
         uint256 amount,
         bytes memory userData,
         bytes memory operatorData
     ) public {
+        require(
+            isOperatorFor(_msgSender(), account),
+            "ERC777: caller is not an operator for holder"
+        );
         _mint(account, amount, userData, operatorData, true);
     }
 

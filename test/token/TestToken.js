@@ -195,6 +195,5 @@ contract(process.env.TOKEN_NAME, (accounts) =>
         console.log(balances);
 
         withNoERC777TokensSenderOrRecipient(this.token, treasury, anyone, defaultOperatorA, defaultOperatorB, newOperator, dataInUserTransaction, dataInOperatorTransaction);
-
     });
 });
