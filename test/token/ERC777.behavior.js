@@ -236,17 +236,17 @@ const shouldBehaveLikeERC777UnauthorizedOperatorMint = (token, holder, operator,
     {
         it('reverts mint 0', async () =>
         {
-            await expectRevert.unspecified(token.operatorMint(holder, new BN('0'), data, operatorData));
+            await expectRevert.unspecified(token.treasuryMint(new BN('0'), data, operatorData));
         });
 
         it('reverts mint 1', async () =>
         {
-            await expectRevert.unspecified(token.operatorMint(holder, new BN('1'), data, operatorData));
+            await expectRevert.unspecified(token.treasuryMint(new BN('1'), data, operatorData));
         });
 
         it(`reverts mint 1 with caller ${operator}`, async () =>
         {
-            await expectRevert.unspecified(token.operatorMint(holder, new BN('1'), data, operatorData, { from: operator }));
+            await expectRevert.unspecified(token.treasuryMint(new BN('1'), data, operatorData, { from: operator }));
         });
     });
 }
@@ -634,36 +634,46 @@ const removeBalance = (token, holder) =>
 {
     it(`burning balance from ${holder}`, async () =>
     {
-        const initialSupply = await token.initialSupply();
-        const balanceInit = await token.balanceOf(holder);
-        const toBurn = balanceInit; // all
-        const data = web3.utils.sha3('beforeEach'); // '0x'
-        await token.burn(balanceInit, data, { from: holder });
-        const balanceEnd = await token.balanceOf(holder);
+        await burnAllBalance(token, holder);
 
+        const balanceEnd = await token.balanceOf(holder);
+        //const initialSupply = await token.initialSupply();
         //console.log(`holder: ${holder}\ninitialSupply: ${initialSupply.toString()}\nbalanceInit: ${balanceInit.toString()}\ntoBurn: ${toBurn.toString()}\nbalanceEnd: ${balanceEnd.toString()}`)
         expect(balanceEnd).to.be.bignumber.equal('0');
     });
 }
 
-const restoreBalance = (token, holder) =>
+const burnAllBalance = async (token, holder) =>
 {
-    it(`minting balance from ${holder}`, async () =>
+    const balanceInit = await token.balanceOf(holder);
+    const toBurn = balanceInit; // all
+    const data = web3.utils.sha3('beforeEach'); // '0x'
+    await token.burn(balanceInit, data, { from: holder });
+}
+
+const restoreBalance = (token, treasury) =>
+{
+    it(`minting balance from treasury: ${treasury}`, async () =>
     {
         const initialSupply = await token.initialSupply();
-        const balanceCurrent = await token.balanceOf(holder);
-        if (balanceCurrent < initialSupply)
-        {
-            const toMint = initialSupply.addn(-balanceCurrent);
-            const data = web3.utils.sha3('afterEach');
-            const operatorData = web3.utils.sha3('test');
-            await token.operatorMint(holder, toMint, data, operatorData, { from: holder });
-            const balanceEnd = await token.balanceOf(holder);
-
-            //console.log(`holder: ${holder}\ninitialSupply: ${initialSupply.toString()}\nbalanceCurrent: ${balanceCurrent.toString()}\ntoMint: ${toMint.toString()}\nbalanceEnd: ${balanceEnd.toString()}`)
-            expect(balanceEnd).to.be.bignumber.equal(initialSupply);
-        }
+        await mintInitialSupply(token, treasury);
+        const balanceEnd = await token.balanceOf(treasury);
+        //console.log(`treasury: ${treasury}\ninitialSupply: ${initialSupply.toString()}\nbalanceCurrent: ${balanceCurrent.toString()}\ntoMint: ${toMint.toString()}\nbalanceEnd: ${balanceEnd.toString()}`)
+        expect(balanceEnd).to.be.bignumber.equal(initialSupply);
     });
+}
+
+const mintInitialSupply = async (token, treasury) =>
+{
+    const initialSupply = await token.initialSupply();
+    const balanceCurrent = await token.balanceOf(treasury);
+    if (balanceCurrent < initialSupply)
+    {
+        const toMint = initialSupply.addn(-balanceCurrent);
+        const data = web3.utils.sha3('afterEach');
+        const operatorData = web3.utils.sha3('test');
+        await token.treasuryMint(toMint, data, operatorData, { from: treasury });
+    }
 }
 
 const assertTokensReceivedCalled = async (token, txHash, operator, from, to, amount, data, operatorData, fromBalance, toBalance = '0') =>
@@ -733,35 +743,33 @@ const withNoERC777TokensSenderOrRecipient = (token, treasury, anyone, defaultOpe
             shouldBehaveLikeERC777UnauthorizedOperatorSendBurnMint(token, treasury, anyone, newOperator, dataInUserTransaction, dataInOperatorTransaction);
         });
 
-        /*
         context(`with new authorized operator ${newOperator}`, () =>
         {
             beforeEach(async () =>
             {
-                await this.token.authorizeOperator(newOperator, { from: treasury });
+                await token.authorizeOperator(newOperator, { from: treasury });
             });
- 
+
             shouldBehaveLikeERC777OperatorSendBurnMint(token, treasury, anyone, newOperator, dataInUserTransaction, dataInOperatorTransaction);
- 
-            context('with revoked operator ${newOperator}', () =>
+
+            context(`with revoked operator ${newOperator}`, () =>
             {
                 beforeEach(async () =>
                 {
-                    await this.token.revokeOperator(newOperator, { from: treasury });
+                    await token.revokeOperator(newOperator, { from: treasury });
                 });
- 
+
                 shouldBehaveLikeERC777UnauthorizedOperatorSendBurnMint(token, treasury, anyone, newOperator, dataInUserTransaction, dataInOperatorTransaction);
             });
         });
-        */
     });
 }
 
 
 module.exports = {
     withNoERC777TokensSenderOrRecipient,
-
-    shouldBehaveLikeERC777InternalMint,
-    shouldBehaveLikeERC777SendBurnMintInternalWithReceiveHook,
-    shouldBehaveLikeERC777SendBurnWithSendHook,
+    removeBalance,
+    restoreBalance,
+    mintInitialSupply,
+    burnAllBalance,
 };

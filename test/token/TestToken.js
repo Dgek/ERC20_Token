@@ -5,18 +5,14 @@ const { deployProxy } = require('@openzeppelin/truffle-upgrades');
 const ERC777SenderRecipientMock = artifacts.require('ERC777SenderRecipientMockUpgradeable');
 
 const { BN, expectEvent, expectRevert, singletons, constants } = require('@openzeppelin/test-helpers');
+const { ZERO_ADDRESS } = constants;
 const { expect } = require('chai');
-
 const {
     withNoERC777TokensSenderOrRecipient,
-
-    shouldBehaveLikeERC777UnauthorizedOperatorSendBurn,
-    shouldBehaveLikeERC777InternalMint,
-    shouldBehaveLikeERC777SendBurnMintInternalWithReceiveHook,
-    shouldBehaveLikeERC777SendBurnWithSendHook,
+    removeBalance,
+    restoreBalance,
 } = require('./ERC777.behavior');
 
-const { ZERO_ADDRESS } = constants;
 const initialSupply = new BN(process.env.TOKEN_INITIAL_SUPPLY);
 console.log(process.env.TOKEN_NAME, process.env.TOKEN_SYMBOL, initialSupply.toString());
 
@@ -180,6 +176,108 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(initialSupply);
             });
         });
+    });
+
+    describe(`only treasury ${treasury} can mint tokens`, () =>
+    {
+        context(`only treasury ${treasury} can mint the tokens of the treasury`, () =>
+        {
+            it(`returns treasury ${treasury} == initialSupply ${tokenArgs.initialSupply} using ${registryFunder}`, async () =>
+            {
+                await expectRevert.unspecified(
+                    this.token.treasuryMint(new BN('1'), dataInUserTransaction, dataInOperatorTransaction, { from: registryFunder }),
+                );
+                expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+            });
+
+            it(`returns treasury ${treasury} == initialSupply ${tokenArgs.initialSupply} using defaultOperatorA: ${defaultOperatorA}`, async () =>
+            {
+                await expectRevert.unspecified(
+                    this.token.treasuryMint(new BN('1'), dataInUserTransaction, dataInOperatorTransaction, { from: defaultOperatorA }),
+                );
+                expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+            });
+
+            it(`returns treasury ${treasury} == initialSupply ${tokenArgs.initialSupply} using defaultOperatorB: ${defaultOperatorB}`, async () =>
+            {
+                await expectRevert.unspecified(
+                    this.token.treasuryMint(new BN('1'), dataInUserTransaction, dataInOperatorTransaction, { from: defaultOperatorB }),
+                );
+                expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+            });
+
+            it(`returns treasury ${treasury} == initialSupply ${tokenArgs.initialSupply} using anyone: ${anyone}`, async () =>
+            {
+                await expectRevert.unspecified(
+                    this.token.treasuryMint(new BN('1'), dataInUserTransaction, dataInOperatorTransaction, { from: anyone }),
+                );
+                expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+            });
+
+            it(`returns treasury ${treasury} == initialSupply ${tokenArgs.initialSupply} using treasury: ${treasury}`, async () =>
+            {
+                this.token.treasuryMint(new BN('1'), dataInUserTransaction, dataInOperatorTransaction, { from: treasury });
+                const balanceAfterMint = initialSupply.addn(1);
+                const balanceCurrent = await this.token.balanceOf(treasury);
+                console.log(`treasury is now: ${balanceCurrent} == ${balanceAfterMint.toString()}`)
+                expect(balanceCurrent).to.be.bignumber.equal(balanceAfterMint);
+            });
+        });
+        /*
+        context(`only treasury ${treasury} can burn the tokens of the treasury`, () =>
+        {
+            it(`returns treasury ${treasury} == initialSupply ${tokenArgs.initialSupply} using ${registryFunder}`, async () =>
+            {
+                await expectRevert.unspecified(
+                    this.token.treasuryMint(new BN('1'), dataInUserTransaction, dataInOperatorTransaction, { from: registryFunder }),
+                );
+                expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+            });
+
+            it(`returns treasury ${treasury} == initialSupply ${tokenArgs.initialSupply} using defaultOperatorA: ${defaultOperatorA}`, async () =>
+            {
+                await expectRevert.unspecified(
+                    this.token.treasuryMint(new BN('1'), dataInUserTransaction, dataInOperatorTransaction, { from: registryFunder }),
+                );
+                expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+            });
+
+            it(`returns treasury ${treasury} == initialSupply ${tokenArgs.initialSupply} using defaultOperatorB: ${defaultOperatorB}`, async () =>
+            {
+                await expectRevert.unspecified(
+                    this.token.treasuryMint(new BN('1'), dataInUserTransaction, dataInOperatorTransaction, { from: registryFunder }),
+                );
+                expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+            });
+
+            it(`returns treasury ${treasury} == initialSupply ${tokenArgs.initialSupply} using anyone: ${anyone}`, async () =>
+            {
+                await expectRevert.unspecified(
+                    this.token.treasuryMint(new BN('1'), dataInUserTransaction, dataInOperatorTransaction, { from: registryFunder }),
+                );
+                expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+            });
+        });
+        */
+        /*
+        removeBalance(this.token, treasury);
+
+        it(`only treasury ${treasury} can burn the tokens of the treasury`, async () =>
+        {
+            burnAllBalance
+            mintInitialSupply,
+                ,
+                expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(initialSupply);
+        });
+
+        it(`only treasury ${treasury} can mint tokens`, async () =>
+        {
+            burnAllBalance
+            mintInitialSupply,
+                ,
+            expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(initialSupply);
+        });
+        */
     });
 
     it('with no ERC777TokensSender and no ERC777TokensRecipient implementers', async () =>
