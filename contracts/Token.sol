@@ -95,7 +95,7 @@ contract Token is Initializable, ERC777Upgradeable {
      * Requirements
      *
      * - caller must be the initial holder of the tokens - treasury.
-     * - if calle - treasury is a contract, it must implement the {IERC777Recipient}
+     * - if caller - treasury is a contract, it must implement the {IERC777Recipient}
      * interface.
      */
     function treasuryMint(
@@ -105,6 +105,60 @@ contract Token is Initializable, ERC777Upgradeable {
     ) public {
         require(isTreasury(_msgSender()), "ERC777: caller is not the treasury");
         _mint(_msgSender(), amount, userData, operatorData, true);
+    }
+
+    /**
+     * @dev Creates tokens and assigns them to `to` address, increasing
+     * the total supply.
+     *
+     * If a send hook is registered for the treasury account, the corresponding function
+     * will be called with `data` and `operatorData`.
+     *
+     * See {IERC777Sender} and {IERC777Recipient}.
+     *
+     * Emits {Minted} and {IERC20-Transfer} events.
+     *
+     * Requirements
+     *
+     * - caller must be the initial holder of the tokens - treasury.
+     * - if caller - treasury is a contract, it must implement the {IERC777Recipient}
+     * interface.
+     */
+    function treasuryMintTo(
+        address to,
+        uint256 amount,
+        bytes memory userData,
+        bytes memory operatorData
+    ) public {
+        require(isTreasury(_msgSender()), "ERC777: caller is not the treasury");
+        _mint(to, amount, userData, operatorData, true);
+    }
+
+    /**
+     * @dev Creates tokens and assigns them to `to` address, increasing
+     * the total supply.
+     *
+     * If a send hook is registered for the treasury account, the corresponding function
+     * will be called with `data` and `operatorData`.
+     *
+     * See {IERC777Sender} and {IERC777Recipient}.
+     *
+     * Emits {Minted} and {IERC20-Transfer} events.
+     *
+     * Requirements
+     *
+     * - caller must be an operator of the initial holder of the tokens - treasury.
+     * - if caller is a contract, it must implement the {IERC777Recipient}
+     * interface.
+     */
+    function operatorMintTo(
+        address to,
+        uint256 amount,
+        bytes memory userData,
+        bytes memory operatorData
+    ) public {
+        require(isOperatorFor(_msgSender(), _treasuryAccount), "ERC777: caller is not an operator for the treasury account");
+        _mint(to, amount, userData, operatorData, true);
     }
 
     function _beforeTokenTransfer(
