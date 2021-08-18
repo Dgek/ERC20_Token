@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC777/ERC777Upgradeable.sol";
+import "./ERC777UpgradableWithPauseFreeze.sol";
 
 /**
  * @dev {ERC777} token, including:
@@ -11,17 +11,10 @@ import "@openzeppelin/contracts-upgradeable/token/ERC777/ERC777Upgradeable.sol";
  *
  * _Available since v3.4._
  */
-contract Token is Initializable, ERC777Upgradeable {
+contract Token is Initializable, ERC777UpgradeableWithPauseFreeze {
     event BeforeTokenTransfer();
-    uint256 private _initialSupply;
-    address private _treasuryAccount;
 
-    /**
-     * @dev Returns the amount of tokens when the contract was initialized.
-     */
-    function initialSupply() public view returns (uint256) {
-        return _initialSupply;
-    }
+    uint256 private _initialSupply;
 
     function initialize(
         string memory name,
@@ -60,6 +53,7 @@ contract Token is Initializable, ERC777Upgradeable {
         __Context_init_unchained();
         __ERC777_init_unchained(name, symbol, defaultOperators);
         __Token_init_unchained(creationSupply, treasury, data, operatorData);
+        _pause();
     }
 
     function __Token_init_unchained(
@@ -69,16 +63,7 @@ contract Token is Initializable, ERC777Upgradeable {
         bytes memory operatorData
     ) internal initializer {
         _mint(treasury, creationSupply, data, operatorData);
-
-        _initialSupply = balanceOf(treasury);
-        _treasuryAccount = treasury;
-    }
-
-    /**
-     * @dev Check if the account is the initial holder of the tokens
-     */
-    function isTreasury(address treasury) public view returns (bool) {
-        return treasury == _treasuryAccount;
+        setTreasury(treasury);
     }
 
     /**
@@ -102,8 +87,9 @@ contract Token is Initializable, ERC777Upgradeable {
         uint256 amount,
         bytes memory userData,
         bytes memory operatorData
-    ) public {
+    ) public whenNotPausedOrFrozen {
         require(isTreasury(_msgSender()), "ERC777: caller is not the treasury");
+        require(!paused(), "contract paused");
         _mint(_msgSender(), amount, userData, operatorData, true);
     }
 
@@ -129,8 +115,9 @@ contract Token is Initializable, ERC777Upgradeable {
         uint256 amount,
         bytes memory userData,
         bytes memory operatorData
-    ) public {
+    ) public whenNotPausedOrFrozen {
         require(isTreasury(_msgSender()), "ERC777: caller is not the treasury");
+        require(!paused(), "contract paused");
         _mint(to, amount, userData, operatorData, true);
     }
 
@@ -156,18 +143,22 @@ contract Token is Initializable, ERC777Upgradeable {
         uint256 amount,
         bytes memory userData,
         bytes memory operatorData
-    ) public {
-        require(isOperatorFor(_msgSender(), _treasuryAccount), "ERC777: caller is not an operator for the treasury account");
+    ) public whenNotPausedOrFrozen onlyTreasury {
         _mint(to, amount, userData, operatorData, true);
     }
 
     function _beforeTokenTransfer(
-        address,
-        address,
-        address,
+        address operator,
+        address from,
+        address to,
         uint256
-    ) internal override {
+    ) internal override whenNotPausedOrFrozen {
         emit BeforeTokenTransfer();
+        require(!paused(), "contract paused");
+        require(!frozen[_msgSender()], "user address frozen");
+        require(!frozen[operator], "operator address frozen");
+        require(!frozen[from], "from address frozen");
+        require(!frozen[to], "to address frozen");
     }
 
     uint256[50] private __gap;

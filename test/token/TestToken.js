@@ -45,7 +45,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
         }
         else
         {
-            this.token = await Token.new({ from: treasury });
+            this.token = await Token.new({ from: registryFunder });
 
             let logs;
             ({ logs } = await this.token.initialize(tokenArgs.name, tokenArgs.symbol, tokenArgs.defaultOperators, tokenArgs.initialSupply.toString(), tokenArgs.treasury, tokenArgs.data, tokenArgs.operationData));
@@ -58,6 +58,11 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 operatorData: dataInception
             });
 
+            await expectRevert.unspecified(this.token.unpause());
+            await expectRevert.unspecified(this.token.pause());
+            await this.token.unpause({ from: treasury });
+            await this.token.pause({ from: treasury });
+            await this.token.unpause({ from: treasury });
             await this.token.authorizeOperator(treasuryOperator, { from: treasury });
         }
     });

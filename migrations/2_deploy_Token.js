@@ -14,20 +14,21 @@ module.exports = async function (deployer, network, accounts)
     if (network === 'development')
     {
         // In a test environment an ERC777 token requires deploying an ERC1820 registry
-        await singletons.ERC1820Registry(accounts[0]);
+        await singletons.ERC1820Registry(accounts[0]); // founder
 
         args = [
             process.env.TOKEN_NAME,
             process.env.TOKEN_SYMBOL,
-            [accounts[1]],
+            [accounts[2], accounts[3]], // operators
             new web3.utils.BN(process.env.TOKEN_INITIAL_SUPPLY),
-            accounts[0], // '0x6c2339b46F41a06f09CA0051ddAD54D1e582bA77' // accounts[0]
+            accounts[1], // treasury
             dataInception,
             dataInception
         ];
 
         const instance = await deployProxy(Token, args, { deployer, initializer: 'initialize' });
         console.log("Contract deployed", instance.address);
+
+        await instance.unpause({ from: accounts[1] });
     }
 };
-
