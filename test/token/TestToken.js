@@ -340,6 +340,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
         it('treasury cannot be frozen', async () =>
         {
             await expectRevert.unspecified(this.token.freeze(treasury, { from: registryFunder }));
+            await expectRevert.unspecified(this.token.freeze(treasury, { from: treasury }));    // even by mistake
         });
 
         it('anyone cannot freeze accounts', async () =>
@@ -365,6 +366,39 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             expectEvent.inLogs(logs, 'AssetProtectionRoleSet', {
                 oldAssetProtectionRole: treasury,
                 newAssetProtectionRole: defaultOperatorA
+            });
+
+            freezeAndUnfreezeAccount(anyone, defaultOperatorA);
+
+            await expectRevert.unspecified(this.token.freeze(treasury, { from: defaultOperatorA }));    // no one can freeze the tresury account
+            await expectRevert.unspecified(this.token.wipeFrozenAddress(treasury, { from: defaultOperatorA }));    // no one can wipe the tresury account
+
+
+            ({ logs } = await this.token.setAssetProtectionRole(treasury, { from: defaultOperatorA }));
+
+            expectEvent.inLogs(logs, 'AssetProtectionRoleSet', {
+                oldAssetProtectionRole: defaultOperatorA,
+                newAssetProtectionRole: treasury
+            });
+        });
+
+        it('transfer 1 token to anyone and wipe account', async () =>
+        {
+            await this.token.send(anyone, new BN(1), dataInUserTransaction, { from: treasury });
+            expect(await this.token.balanceOf(anyone)).to.be.bignumber.equal(new BN(1));
+
+            await expectRevert.unspecified(this.token.wipeFrozenAddress(treasury, { from: treasury }));    // no one can wipe the tresury account
+
+            let logs;
+            ({ logs } = await this.token.freeze(anyone, { from: treasury }));
+
+            expectEvent.inLogs(logs, 'AddressFrozen', {
+                addr: anyone
+            });
+            ({ logs } = await this.token.wipeFrozenAddress(anyone, { from: treasury }));
+
+            expectEvent.inLogs(logs, 'FrozenAddressWiped', {
+                addr: anyone
             });
 
             freezeAndUnfreezeAccount(anyone, defaultOperatorA);

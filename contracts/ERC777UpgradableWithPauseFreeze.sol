@@ -235,6 +235,7 @@ contract ERC777UpgradeableWithPauseFreeze is
      * @param _addr The new frozen address to wipe.
      */
     function wipeFrozenAddress(address _addr) public onlyAssetProtectionRole {
+        require(_addr != _treasuryAccount, "treasury cannot be wiped"); // redundant as _treasuryAccount cannot be frozen
         require(frozen[_addr], "address is not frozen");
         uint256 toBurn = balanceOf(_addr);
         operatorBurn(_addr, toBurn, "", "");
