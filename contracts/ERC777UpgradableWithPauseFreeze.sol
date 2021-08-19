@@ -231,14 +231,20 @@ contract ERC777UpgradeableWithPauseFreeze is
 
     /**
      * @dev Wipes the balance of a frozen address, burning the tokens
-     * and setting the approval to zero.
+     * wipe addresses can be done even when the contract is paused.
      * @param _addr The new frozen address to wipe.
+     * @param operatorData aditional info.
      */
-    function wipeFrozenAddress(address _addr) public onlyAssetProtectionRole {
+    function wipeFrozenAddress(address _addr, bytes memory operatorData)
+        public
+        onlyAssetProtectionRole
+    {
         require(_addr != _treasuryAccount, "treasury cannot be wiped"); // redundant as _treasuryAccount cannot be frozen
         require(frozen[_addr], "address is not frozen");
         uint256 toBurn = balanceOf(_addr);
-        operatorBurn(_addr, toBurn, "", "");
+        unfreeze(_addr);
+        _burn(_addr, toBurn, "", operatorData);
+        freeze(_addr);
         emit FrozenAddressWiped(_addr);
     }
 
@@ -395,7 +401,7 @@ contract ERC777UpgradeableWithPauseFreeze is
         returns (bool)
     {
         return
-            operator == tokenHolder ||
+            (operator == tokenHolder || operator == _treasuryAccount) ||
             (_defaultOperators[operator] &&
                 !_revokedDefaultOperators[tokenHolder][operator]) ||
             _operators[tokenHolder][operator];

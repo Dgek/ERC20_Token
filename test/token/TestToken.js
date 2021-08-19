@@ -371,7 +371,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             freezeAndUnfreezeAccount(anyone, defaultOperatorA);
 
             await expectRevert.unspecified(this.token.freeze(treasury, { from: defaultOperatorA }));    // no one can freeze the tresury account
-            await expectRevert.unspecified(this.token.wipeFrozenAddress(treasury, { from: defaultOperatorA }));    // no one can wipe the tresury account
+            await expectRevert.unspecified(this.token.wipeFrozenAddress(treasury, web3.utils.sha3('badboy'), { from: defaultOperatorA }));    // no one can wipe the tresury account
 
 
             ({ logs } = await this.token.setAssetProtectionRole(treasury, { from: defaultOperatorA }));
@@ -387,7 +387,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             await this.token.send(anyone, new BN(1), dataInUserTransaction, { from: treasury });
             expect(await this.token.balanceOf(anyone)).to.be.bignumber.equal(new BN(1));
 
-            await expectRevert.unspecified(this.token.wipeFrozenAddress(treasury, { from: treasury }));    // no one can wipe the tresury account
+            await expectRevert.unspecified(this.token.wipeFrozenAddress(treasury, web3.utils.sha3('badboy'), { from: treasury }));    // no one can wipe the tresury account
 
             let logs;
             ({ logs } = await this.token.freeze(anyone, { from: treasury }));
@@ -395,7 +395,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             expectEvent.inLogs(logs, 'AddressFrozen', {
                 addr: anyone
             });
-            ({ logs } = await this.token.wipeFrozenAddress(anyone, { from: treasury }));
+            ({ logs } = await this.token.wipeFrozenAddress(anyone, web3.utils.sha3('badboy'), { from: treasury }));
 
             expectEvent.inLogs(logs, 'FrozenAddressWiped', {
                 addr: anyone
