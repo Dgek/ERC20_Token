@@ -317,6 +317,60 @@ contract(process.env.TOKEN_NAME, (accounts) =>
         */
     });
 
+    describe('frozen accounts', () =>
+    {
+        const freezeAndUnfreezeAccount = (address, operator) =>
+        {
+            it(`freeze and unfreeze ${address}`, async () =>
+            {
+                let logs;
+                ({ logs } = await this.token.freeze(address, { from: operator }));
+
+                expectEvent.inLogs(logs, 'AddressFrozen', {
+                    addr: address
+                });
+
+                ({ logs } = await this.token.unfreeze(address, { from: operator }));
+                expectEvent.inLogs(logs, 'AddressUnfrozen', {
+                    addr: address
+                });
+            });
+        }
+
+        it('treasury cannot be frozen', async () =>
+        {
+            await expectRevert.unspecified(this.token.freeze(treasury, { from: registryFunder }));
+        });
+
+        it('anyone cannot freeze accounts', async () =>
+        {
+            await expectRevert.unspecified(this.token.freeze(defaultOperatorA, { from: anyone }));
+        });
+
+        it('registryFunder cannot freeze accounts', async () =>
+        {
+            await expectRevert.unspecified(this.token.freeze(defaultOperatorA, { from: registryFunder }));
+        });
+
+        it('treasury can freeze accounts', async () =>
+        {
+            freezeAndUnfreezeAccount(defaultOperatorA, treasury);
+        });
+
+        it('set a new protector and freeze anyone account', async () =>
+        {
+            let logs;
+            ({ logs } = await this.token.setAssetProtectionRole(defaultOperatorA, { from: treasury }));
+
+            expectEvent.inLogs(logs, 'AssetProtectionRoleSet', {
+                oldAssetProtectionRole: treasury,
+                newAssetProtectionRole: defaultOperatorA
+            });
+
+            freezeAndUnfreezeAccount(anyone, defaultOperatorA);
+        });
+    });
+
     it('with no ERC777TokensSender and no ERC777TokensRecipient implementers', async () =>
     {
         let balances = {}

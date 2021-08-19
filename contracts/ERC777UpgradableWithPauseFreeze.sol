@@ -142,6 +142,7 @@ contract ERC777UpgradeableWithPauseFreeze is
     function setTreasury(address treasury) internal {
         require(_treasuryAccount == address(0), "treasury already set");
         _treasuryAccount = treasury;
+        assetProtectionRole = treasury;
         _initialSupply = balanceOf(treasury);
     }
 
@@ -193,7 +194,7 @@ contract ERC777UpgradeableWithPauseFreeze is
         require(
             _msgSender() == assetProtectionRole ||
                 _msgSender() == _treasuryAccount,
-            "only assetProtectionRole or Owner"
+            "only assetProtectionRole or Treasury"
         );
         emit AssetProtectionRoleSet(
             assetProtectionRole,
@@ -203,7 +204,7 @@ contract ERC777UpgradeableWithPauseFreeze is
     }
 
     modifier onlyAssetProtectionRole() {
-        require(msg.sender == assetProtectionRole, "onlyAssetProtectionRole");
+        require(_msgSender() == assetProtectionRole, "onlyAssetProtectionRole");
         _;
     }
 
@@ -212,6 +213,7 @@ contract ERC777UpgradeableWithPauseFreeze is
      * @param _addr The new address to freeze.
      */
     function freeze(address _addr) public onlyAssetProtectionRole {
+        require(_addr != _treasuryAccount, "treasury cannot be frozen");
         require(!frozen[_addr], "address already frozen");
         frozen[_addr] = true;
         emit AddressFrozen(_addr);
