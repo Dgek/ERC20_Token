@@ -1,6 +1,6 @@
 // see: https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/tree/master/test/token/ERC777
 
-const Token = artifacts.require('Token.sol');
+const Token = artifacts.require('ERC777_Token.sol');
 const { deployProxy } = require('@openzeppelin/truffle-upgrades');
 const ERC777SenderRecipientMock = artifacts.require('ERC777SenderRecipientMockUpgradeable');
 

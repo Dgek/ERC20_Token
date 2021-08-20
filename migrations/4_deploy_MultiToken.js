@@ -1,15 +1,16 @@
-// A key point to note is that in a testing environment an ERC777 token requires deploying an ERC1820 registry 
+// A key point to note is that in a testing environment an ERC777 token requires deploying an ERC1820 registry
 // https://forum.openzeppelin.com/t/simple-erc777-token-example/746
 require('@openzeppelin/test-helpers/configure')({ provider: web3.currentProvider, environment: 'truffle' });
 const { singletons } = require('@openzeppelin/test-helpers');
 
-const Token = artifacts.require('ERC777_Token');
+const MultiToken = artifacts.require('ERC1155_MultiToken');
 const { deployProxy } = require('@openzeppelin/truffle-upgrades');
 const Web3 = require('web3');
 const dataInception = web3.utils.sha3('inception');
 
 module.exports = async function (deployer, network, accounts)
 {
+    /*
     let args = [];
     if (network === 'development')
     {
@@ -27,9 +28,10 @@ module.exports = async function (deployer, network, accounts)
             dataInception
         ];
 
-        const instance = await deployProxy(Token, args, { deployer, initializer: 'initialize' });
+        const instance = await deployProxy(MultiToken, args, { deployer, initializer: 'initialize' });
         console.log("Contract deployed", instance.address);
 
         await instance.unpause({ from: accounts[1] });
     }
+    */
 };

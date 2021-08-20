@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "./ERC777UpgradableWithPauseFreeze.sol";
+import "./ERC777_UpgradePauseFreeze.sol";
 
 /**
  * @dev {ERC777} token, including:
@@ -11,7 +11,7 @@ import "./ERC777UpgradableWithPauseFreeze.sol";
  *
  * _Available since v3.4._
  */
-contract Token is Initializable, ERC777UpgradeableWithPauseFreeze {
+contract ERC777_Token is Initializable, ERC777_UpgradePauseFreeze {
     event BeforeTokenTransfer();
 
     uint256 private _initialSupply;

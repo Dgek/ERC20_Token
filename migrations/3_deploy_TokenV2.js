@@ -1,7 +1,7 @@
 
 const { deployProxy } = require('@openzeppelin/truffle-upgrades');
 
-const TokenV2 = artifacts.require('TokenV2');
+const TokenV2 = artifacts.require('ERC777_TokenV2');
 
 module.exports = async function (deployer, network, accounts)
 {

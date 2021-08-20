@@ -30,7 +30,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
  * are no special restrictions in the amount of tokens that created, moved, or
  * destroyed. This makes integration with ERC20 applications seamless.
  */
-contract ERC777UpgradeableWithPauseFreeze is
+contract ERC777_UpgradePauseFreeze is
     Initializable,
     ContextUpgradeable,
     IERC777Upgradeable,
@@ -87,7 +87,7 @@ contract ERC777UpgradeableWithPauseFreeze is
     ) internal initializer {
         _name = name_;
         _symbol = symbol_;
-
+        _treasuryAccount = address(0);
         _defaultOperatorsArray = defaultOperators_;
         for (uint256 i = 0; i < defaultOperators_.length; i++) {
             _defaultOperators[defaultOperators_[i]] = true;
@@ -192,6 +192,10 @@ contract ERC777UpgradeableWithPauseFreeze is
      */
     function setAssetProtectionRole(address _newAssetProtectionRole) public {
         require(
+            _treasuryAccount != address(0),
+            "assign protection role to zero address"
+        );
+        require(
             _msgSender() == assetProtectionRole ||
                 _msgSender() == _treasuryAccount,
             "only assetProtectionRole or Treasury"
@@ -213,6 +217,7 @@ contract ERC777UpgradeableWithPauseFreeze is
      * @param _addr The new address to freeze.
      */
     function freeze(address _addr) public onlyAssetProtectionRole {
+        require(_treasuryAccount != address(0), "freezing zero address");
         require(_addr != _treasuryAccount, "treasury cannot be frozen");
         require(!frozen[_addr], "address already frozen");
         frozen[_addr] = true;
@@ -224,6 +229,7 @@ contract ERC777UpgradeableWithPauseFreeze is
      * @param _addr The new address to unfreeze.
      */
     function unfreeze(address _addr) public onlyAssetProtectionRole {
+        require(_treasuryAccount != address(0), "unfreezing zero address");
         require(frozen[_addr], "address already unfrozen");
         frozen[_addr] = false;
         emit AddressUnfrozen(_addr);
@@ -239,6 +245,7 @@ contract ERC777UpgradeableWithPauseFreeze is
         public
         onlyAssetProtectionRole
     {
+        require(_treasuryAccount != address(0), "wipe frozen zero address");
         require(_addr != _treasuryAccount, "treasury cannot be wiped"); // redundant as _treasuryAccount cannot be frozen
         require(frozen[_addr], "address is not frozen");
         uint256 toBurn = balanceOf(_addr);

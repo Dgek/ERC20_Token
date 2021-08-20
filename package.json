@@ -14,7 +14,7 @@
         "compile": "truffle compile",
         "re-compile-all": "truffle compile --all",
         "coverage": "solidity-coverage",
-        "flatten-Token": "truffle-flattener ./contracts/Token.sol > ./flattened/Token.sol",
+        "flatten-Token": "truffle-flattener ./contracts/ERC777_Token.sol > ./flattened/ERC777_Token.sol",
         "flatten-TokenV2": "truffle-flattener ./contracts/TokenV2.sol > ./flattened/TokenV2.sol",
         "ganache-dev": "ganache-cli -i 1111 -a 10 -d -m 'stomach wage stem judge control beauty glue chapter cannon kitchen pilot orbit'",
         "ganache": "ganache-cli -i 1111 -a 10",

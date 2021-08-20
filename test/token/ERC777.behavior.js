@@ -1,4 +1,4 @@
-const Token = artifacts.require('Token.sol');
+const Token = artifacts.require('ERC777_Token.sol');
 const { BN, constants, expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 const { ZERO_ADDRESS } = constants;
 
