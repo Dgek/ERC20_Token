@@ -21,7 +21,8 @@
         "migrate-development": "truffle migrate --network development",
         "migrate-ropsten": "truffle migrate --network rospsten",
         "solium": "solium -d contracts/ --fix",
-        "test": "truffle test",
+        "test-token": "truffle test ./test/token/TestToken.js",
+        "test-multi-token": "truffle test ./test/token/TestMultiToken.js",
         "clean": "rm -rf ./build && rm -rf *.abi && rm -rf *.bin"
     },
     "repository": {

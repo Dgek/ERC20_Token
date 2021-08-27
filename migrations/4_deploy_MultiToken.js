@@ -10,28 +10,15 @@ const dataInception = web3.utils.sha3('inception');
 
 module.exports = async function (deployer, network, accounts)
 {
-    /*
-    let args = [];
+    const uri = process.env.MULTI_TOKEN_URI;
     if (network === 'development')
     {
         const [registryFunder, treasury, defaultOperatorA, defaultOperatorB] = accounts;
         // In a test environment an ERC777 token requires deploying an ERC1820 registry
         await singletons.ERC1820Registry(registryFunder); // founder
 
-        args = [
-            process.env.TOKEN_NAME,
-            process.env.TOKEN_SYMBOL,
-            [defaultOperatorA, defaultOperatorB], // operators
-            new web3.utils.BN(process.env.TOKEN_INITIAL_SUPPLY),
-            treasury, // treasury
-            dataInception,
-            dataInception
-        ];
 
-        const instance = await deployProxy(MultiToken, args, { deployer, initializer: 'initialize' });
+        const instance = await deployProxy(MultiToken, [uri], { deployer, initializer: 'initialize' });
         console.log("Contract deployed", instance.address);
-
-        await instance.unpause({ from: accounts[1] });
     }
-    */
 };
