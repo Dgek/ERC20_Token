@@ -17,7 +17,6 @@ module.exports = async function (deployer, network, accounts)
         // In a test environment an ERC777 token requires deploying an ERC1820 registry
         await singletons.ERC1820Registry(registryFunder); // founder
 
-
         const instance = await deployProxy(MultiToken, [uri], { deployer, initializer: 'initialize' });
         console.log("Contract deployed", instance.address);
     }

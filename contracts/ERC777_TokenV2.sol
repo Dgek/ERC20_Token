@@ -28,14 +28,20 @@ contract ERC777_TokenV2 is Initializable, ERC777_Token {
      * FUNCTIONALITY
      */
 
+    /**
+     * @dev Gets creators name.
+     * @return A string representing the creator.
+     */
+    function getCreator() public view returns (string memory) {
+        return creator;
+    }
+
     // INITIALIZATION FUNCTIONALITY
 
     /**
-     * @dev sets 0 initials tokens, the owner, and the supplyController.
-     * this serves as the constructor for the proxy but compiles to the
-     * memory model of the Implementation contract.
+     * @dev sets creator's name.
      */
-    function initializeV2(string memory _creator) public initializer {
+    function setCreator(string memory _creator) public onlyTreasury {
         creator = _creator;
     }
 }
