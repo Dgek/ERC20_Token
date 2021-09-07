@@ -1,5 +1,5 @@
 {
-    "name": "KWH_eu",
+    "name": "token_erc777",
     "version": "0.0.1",
     "description": "Paxos-issued USD-collateralized ERC20 stablecoin",
     "main": "truffle.js",
@@ -7,10 +7,10 @@
         "test": "test"
     },
     "scripts": {
-        "truffle-abi-Token": "mkdir -p ./bin && cat build/contracts/Token.json | jq -c .abi > ./bin/Token.abi",
-        "truffle-abi-TokenV2": "mkdir -p ./bin && cat build/contracts/Tokenv2.json | jq -c .abi > ./bin/TokenV2.abi",
-        "truffle-bin-Token": "mkdir -p ./bin && cat build/contracts/Token.json | jq  -r .bytecode > ./bin/Token.bin",
-        "truffle-bin-TokenV2": "mkdir -p ./bin && cat build/contracts/TokenV2.json | jq  -r .bytecode > ./bin/TokenV2.bin",
+        "truffle-abi-Token": "mkdir -p ./bin && cat build/contracts/ERC777_Token.json | jq -c .abi > ./bin/ERC777_Token.abi",
+        "truffle-abi-TokenV2": "mkdir -p ./bin && cat build/contracts/ERC777_Tokenv2.json | jq -c .abi > ./bin/ERC777_TokenV2.abi",
+        "truffle-bin-Token": "mkdir -p ./bin && cat build/contracts/ERC777_Token.json | jq  -r .bytecode > ./bin/ERC777_Token.bin",
+        "truffle-bin-TokenV2": "mkdir -p ./bin && cat build/contracts/ERC777_TokenV2.json | jq  -r .bytecode > ./bin/ERC777_TokenV2.bin",
         "compile": "truffle compile",
         "re-compile-all": "truffle compile --all",
         "coverage": "solidity-coverage",
@@ -19,18 +19,20 @@
         "ganache-dev": "ganache-cli -i 1111 -a 10 -d -m 'stomach wage stem judge control beauty glue chapter cannon kitchen pilot orbit'",
         "ganache": "ganache-cli -i 1111 -a 10",
         "migrate-development": "truffle migrate --network development",
-        "migrate-ropsten": "truffle migrate --network rospsten",
+        "migrate-testnet": "truffle migrate --network testnet",
         "solium": "solium -d contracts/ --fix",
         "test-token": "truffle test ./test/token/TestToken.js",
         "test-multi-token": "truffle test ./test/token/TestMultiToken.js",
-        "clean": "rm -rf ./build && rm -rf *.abi && rm -rf *.bin"
+        "clean": "rm -rf ./build && rm -rf ./bin/*.abi && rm -rf ./bin/*.bin",
+        "---------- EXTERNAL TESTS ----------": "",
+        "nodejs-testnet": "node scripts/testnet.js --network testnet"
     },
     "repository": {
         "type": "git",
         "url": "git+https://github.com/paxosglobal/token-contracts.git"
     },
-    "author": "PAXOS",
-    "license": "UNLICENSED",
+    "author": "Alvaro Martin",
+    "license": "MIT",
     "bugs": {
         "url": "https://github.com/paxosglobal/token-contracts/issues"
     },

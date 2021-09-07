@@ -28,7 +28,7 @@ generate-bin: compile
 
 .PHONY:migrate
 migrate:
-	@npm run migrate --network ropsten
+	@npm run migrate --network testnet
 
 .PHONY:flatten
 flatten:

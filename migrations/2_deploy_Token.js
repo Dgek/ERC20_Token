@@ -6,7 +6,7 @@ const { singletons } = require('@openzeppelin/test-helpers');
 const Token = artifacts.require('ERC777_Token');
 const { deployProxy } = require('@openzeppelin/truffle-upgrades');
 const Web3 = require('web3');
-const dataInception = web3.utils.sha3('inception');
+const dataInception = web3.utils.sha3('AlvaroMartin');
 
 module.exports = async function (deployer, network, accounts)
 {
@@ -29,7 +29,26 @@ module.exports = async function (deployer, network, accounts)
 
         const instance = await deployProxy(Token, args, { deployer, initializer: 'initialize' });
         console.log("Contract deployed", instance.address);
+        console.log("args", args);
 
         await instance.unpause({ from: accounts[1] });
+    }
+    else if (network === 'testnet')
+    {
+        args = [
+            process.env.TOKEN_NAME,
+            process.env.TOKEN_SYMBOL,
+            [process.env.TESTNET_ACCOUNT_DEFAULT_OPERATOR_A, process.env.TESTNET_ACCOUNT_DEFAULT_OPERATOR_B], // operators
+            new web3.utils.BN(process.env.TOKEN_INITIAL_SUPPLY),
+            process.env.TESTNET_ACCOUNT_TREASURY,
+            dataInception,
+            dataInception
+        ];
+
+        const instance = await deployProxy(Token, args, { deployer, initializer: 'initialize' });
+        console.log("Contract deployed", instance.address);
+        console.log("args", args);
+
+        await instance.unpause({ from: process.env.TESTNET_ACCOUNT_TREASURY });
     }
 };

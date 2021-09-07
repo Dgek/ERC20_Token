@@ -1,12 +1,6 @@
 require('dotenv').config();
 
 var HDWalletProvider = require("@truffle/hdwallet-provider");
-const mnemonic = "";
-const mnemonic_dev = "voyage dirt island fog home book twelve result lamp mushroom flip head";
-const mnemonic_ropsten = "trend garlic surround program impulse text address arctic account other faculty total";
-const walletChildNum = 0;
-const networkAddressMainnet = "https://mainnet.infura.io/v3/6e94fab3cc0e4330b085a679973908af";
-const networkAddressTestnet = "https://ropsten.infura.io/v3/6e94fab3cc0e4330b085a679973908af";
 
 module.exports = {
     // See <http://truffleframework.com/docs/advanced/configuration>
@@ -31,19 +25,19 @@ module.exports = {
             provider: function ()
             {
                 return new HDWalletProvider(
-                    mnemonic,
-                    networkAddressMainnet,
-                    walletChildNum
+                    process.env.MNEMONIC_MAINNET,
+                    process.env.NETWORK_ADDRESS_MAINNET,
+                    process.env.WALLET_CHILD_NUMBER,
                 );
             }
         },
-        ropsten: {
+        testnet: {
             provider: function ()
             {
                 return new HDWalletProvider(
-                    mnemonic_ropsten,
-                    networkAddressTestnet,
-                    walletChildNum
+                    process.env.MNEMONIC_TESTNET,
+                    process.env.NETWORK_ADDRESS_TESTNET,
+                    process.env.WALLET_CHILD_NUMBER,
                 );
             },
             network_id: 3,

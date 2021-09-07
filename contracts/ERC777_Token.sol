@@ -7,9 +7,6 @@ import "./ERC777_UpgradePauseFreeze.sol";
  * @dev {ERC777} token, including:
  *
  *  - Preminted initial supply
- *  - No access control mechanism (for minting/pausing) and hence no governance
- *
- * _Available since v3.4._
  */
 contract ERC777_Token is Initializable, ERC777_UpgradePauseFreeze {
     event BeforeTokenTransfer();

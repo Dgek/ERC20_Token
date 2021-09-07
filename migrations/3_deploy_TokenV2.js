@@ -10,6 +10,21 @@ module.exports = async function (deployer, network, accounts)
         let args = [
             'Alvaro Martin'
         ];
-        await deployProxy(TokenV2, ['Alvaro Martin'], { deployer, initializer: 'initializeV2' });
+        const instance = await deployProxy(TokenV2, ['Alvaro Martin'], { deployer, initializer: 'initializeV2' });
+        console.log("Contract deployed", instance.address);
+        console.log("args", args);
+
+        await instance.unpause({ from: process.env.TESTNET_ACCOUNT_TREASURY });
+    }
+    else if (network === 'testnet')
+    {
+        let args = [
+            'Alvaro Martin'
+        ];
+        const instance = await deployProxy(TokenV2, ['Alvaro Martin'], { deployer, initializer: 'initializeV2' });
+        console.log("Contract deployed", instance.address);
+        console.log("args", args);
+
+        await instance.unpause({ from: process.env.TESTNET_ACCOUNT_TREASURY });
     }
 };
