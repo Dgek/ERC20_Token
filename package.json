@@ -25,8 +25,8 @@
         "test-multi-token": "truffle test ./test/token/TestMultiToken.js",
         "clean": "rm -rf ./build && rm -rf ./bin/*.abi && rm -rf ./bin/*.bin",
         "---------- EXTERNAL TESTS ----------": "",
-        "nodejs-devnet": "node scripts/devnet.js --network development",
-        "nodejs-testnet": "node scripts/testnet.js --network testnet"
+        "nodejs-devnet": "node scripts/devnet.js",
+        "nodejs-testnet": "node scripts/testnet.js"
     },
     "repository": {
         "type": "git",

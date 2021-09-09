@@ -28,7 +28,7 @@ module.exports = async function (deployer, network, accounts)
     {
         const existing = await TokenV1.deployed();
         const instance = await upgradeProxy(existing.address, TokenV2, ['Alvaro Martin'], { deployer, initializer: 'initializeV2' });
-        instance.initializeV2("Alvaro Martin", { deployer });
+        await instance.setCreator("Alvaro Martin");
 
         console.log(`Contract ${instance.address} upgrade from ${existing.address}`);
         console.log(await (await instance.version()).toString());

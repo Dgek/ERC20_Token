@@ -8,11 +8,8 @@ require('dotenv').config();
 const { BN, expectEvent, expectRevert, singletons, constants } = require('@openzeppelin/test-helpers');
 var HDWalletProvider = require("@truffle/hdwallet-provider");
 const Web3 = require('web3');
-const tokenV1_contractAddress = "0x02c9c774bdb04Cb37744585982723b6cB694b354";
-const tokenV2_contractAddress = "0x757D7FF9fC61654E47b50F351AE358eEF8662B86";
-const tokenV2_proxy = "0x757D7FF9fC61654E47b50F351AE358eEF8662B86";
+const token_contract_address = "0x02c9c774bdb04Cb37744585982723b6cB694b354";
 
-const userAccount = "0xC8D895A2A8AC4687CF337c25d58A07841bf34FE5";
 /*
 process.env.TESTNET_ACCOUNT_TREASURY = 0x0798B6A6bFFaef1858Ab0692877163dD234984ED
 process.env.TESTNET_ACCOUNT_DEFAULT_OPERATOR_A = 0x8E0aC6EdAD904Bfec16BDc2b7ecaA6b348308bd2
@@ -28,7 +25,7 @@ async function once()
     );
     const web3 = new Web3(provider);
     web3.eth.defaultAccount = process.env.TESTNET_ACCOUNT_TREASURY;
-    const contract = new web3.eth.Contract(abi_tokenV2, tokenV1_contractAddress);
+    const contract = new web3.eth.Contract(abi_tokenV2, token_contract_address);
     //console.log(`default account: ${web3.eth.defaultAccount}`);
     //console.log(contract.options.jsonInterface);
     console.log(await contract.methods.totalSupply());
@@ -84,14 +81,14 @@ async function once()
         }).then(async function (receipt)
         {
             console.log("receipt", receipt.transactionHash);
-            await contract.methods.totalSupply().call({ from: userAccount }, function (error, result)
+            await contract.methods.totalSupply().call({ from: process.env.TESTNET_ACCOUNT_USER }, function (error, result)
             {
                 console.log("totalSupply", error, result);
             });
         });
 
     const dataInUserTransaction_send = web3.utils.sha3("You've got a reward");
-    await contract.methods.send(userAccount, new BN(1), dataInUserTransaction_send).send({ from: process.env.TESTNET_ACCOUNT_TREASURY })
+    await contract.methods.send(process.env.TESTNET_ACCOUNT_USER, new BN(1), dataInUserTransaction_send).send({ from: process.env.TESTNET_ACCOUNT_TREASURY })
         .on('transactionHash', function (hash)
         {
             //console.log("transactionHash", hash);
@@ -112,7 +109,7 @@ async function once()
             console.log("receipt", receipt.transactionHash);
 
             // Transfer token to a specified address from msg.sender
-            await contract.methods.balanceOf(userAccount).call({ from: userAccount }, function (error, result)
+            await contract.methods.balanceOf(process.env.TESTNET_ACCOUNT_USER).call({ from: process.env.TESTNET_ACCOUNT_USER }, function (error, result)
             {
                 console.log("user balance:", error, result);
             });
