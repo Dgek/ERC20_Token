@@ -10,12 +10,6 @@ var HDWalletProvider = require("@truffle/hdwallet-provider");
 const Web3 = require('web3');
 const token_contract_address = "0x02c9c774bdb04Cb37744585982723b6cB694b354";
 
-/*
-process.env.TESTNET_ACCOUNT_TREASURY = 0x0798B6A6bFFaef1858Ab0692877163dD234984ED
-process.env.TESTNET_ACCOUNT_DEFAULT_OPERATOR_A = 0x8E0aC6EdAD904Bfec16BDc2b7ecaA6b348308bd2
-process.env.TESTNET_ACCOUNT_DEFAULT_OPERATOR_B = 0xC5f4dEb10b2dB08C437e223034807ab9087188a3
-*/
-
 async function once()
 {
     const provider = new HDWalletProvider(
