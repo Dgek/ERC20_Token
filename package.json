@@ -1,7 +1,7 @@
 {
     "name": "token_erc777",
     "version": "0.0.1",
-    "description": "Paxos-issued USD-collateralized ERC20 stablecoin",
+    "description": "ERC777 and ERC1156 tokens",
     "main": "truffle.js",
     "directories": {
         "test": "test"
@@ -18,26 +18,28 @@
         "flatten-TokenV2": "truffle-flattener ./contracts/ERC777_TokenV2.sol > ./flattened/ERC777_TokenV2.sol",
         "ganache": "ganache-cli -i 1111 -a 10",
         "ganache-devnet": "ganache-cli -i 1111 -a 10 -d -m 'stomach wage stem judge control beauty glue chapter cannon kitchen pilot orbit'",
-        "migrate-devnet": "truffle migrate --network development",
-        "migrate-testnet": "truffle migrate --network testnet",
+        "eth-migrate-devnet": "truffle migrate --network development",
+        "eth-migrate-testnet": "truffle migrate --network testnet",
+        "matic-migrate-testnet": "truffle migrate --network matic_testnet",
+        "matic-migrate-mainnet": "truffle migrate --network matic_mainnet",
         "solium": "solium -d contracts/ --fix",
         "test-token": "truffle test ./test/token/TestToken.js",
         "test-multi-token": "truffle test ./test/token/TestMultiToken.js",
-        "clean": "rm -rf ./build && rm -rf ./bin/*.abi && rm -rf ./bin/*.bin",
+        "clean": "rm -rf ./build && rm -rf ./bin/*",
         "---------- EXTERNAL TESTS ----------": "",
         "nodejs-devnet": "node scripts/devnet.js",
-        "nodejs-testnet": "node scripts/testnet.js"
+        "nodejs-matic-testnet": "node scripts/testnet.js matic_testnet"
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/paxosglobal/token-contracts.git"
+        "url": "git+https://github.com/PaTiToMaSteR/ERC777_Token"
     },
     "author": "Alvaro Martin",
     "license": "MIT",
     "bugs": {
-        "url": "https://github.com/paxosglobal/token-contracts/issues"
+        "url": "https://github.com/PaTiToMaSteR/ERC777_Token/issues"
     },
-    "homepage": "https://github.com/paxosglobal/token-contracts#readme",
+    "homepage": "https://github.com/PaTiToMaSteR/ERC777_Token#readme",
     "dependencies": {},
     "devDependencies": {
         "@babel/core": "^7.15.0",

@@ -10,45 +10,31 @@ const dataInception = web3.utils.sha3('AlvaroMartin');
 
 module.exports = async function (deployer, network, accounts)
 {
-    let args = [];
+    const [registryFunder, treasury, defaultOperatorA, defaultOperatorB] = accounts;
+
     if (network === 'development')
     {
-        const [registryFunder, treasury, defaultOperatorA, defaultOperatorB] = accounts;
         // In a test environment an ERC777 token requires deploying an ERC1820 registry
         await singletons.ERC1820Registry(registryFunder); // founder
-
-        args = [
-            process.env.TOKEN_NAME,
-            process.env.TOKEN_SYMBOL,
-            [defaultOperatorA, defaultOperatorB], // operators
-            new web3.utils.BN(process.env.TOKEN_INITIAL_SUPPLY),
-            treasury, // treasury
-            dataInception,
-            dataInception
-        ];
-
-        const instance = await deployProxy(Token, args, { deployer, initializer: 'initialize' });
-        console.log("Contract deployed", instance.address);
-        console.log("args", args);
-
-        await instance.unpause({ from: accounts[1] });
     }
     else if (network === 'testnet')
     {
-        args = [
-            process.env.TOKEN_NAME,
-            process.env.TOKEN_SYMBOL,
-            [process.env.TESTNET_ACCOUNT_DEFAULT_OPERATOR_A, process.env.TESTNET_ACCOUNT_DEFAULT_OPERATOR_B], // operators
-            new web3.utils.BN(process.env.TOKEN_INITIAL_SUPPLY),
-            process.env.TESTNET_ACCOUNT_TREASURY,
-            dataInception,
-            dataInception
-        ];
-
-        const instance = await deployProxy(Token, args, { deployer, initializer: 'initialize' });
-        console.log("Contract deployed", instance.address);
-        console.log("args", args);
-
-        await instance.unpause({ from: process.env.TESTNET_ACCOUNT_TREASURY });
     }
+    const initialSupply = new web3.utils.BN(process.env.TOKEN_INITIAL_SUPPLY);
+
+    const args = [
+        process.env.TOKEN_NAME,
+        process.env.TOKEN_SYMBOL,
+        [defaultOperatorA, defaultOperatorB], // operators
+        initialSupply,
+        treasury, // treasury
+        dataInception,
+        dataInception
+    ];
+
+    const instance = await deployProxy(Token, args, { deployer, initializer: 'initialize' });
+    console.log("Contract deployed", instance.address);
+    console.log(`Token Name: ${process.env.TOKEN_NAME}\nSymbol: ${process.env.TOKEN_SYMBOL}\nTreasury Account: ${treasury}\nOperator A: ${defaultOperatorA}\nOperator B: ${defaultOperatorB}\nInitial Supply: ${initialSupply.toString()}`);
+
+    await instance.unpause({ from: accounts[1] });
 };
