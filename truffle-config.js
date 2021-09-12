@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 const HDWalletProvider = require("@truffle/hdwallet-provider");
-const gasUsage = 8e6;   // max per block
+const gasUsage = 8e3;   // max per block
 //const fs = require('fs');
 //const mnemonic = fs.readFileSync(".secret").toString().trim();
 
@@ -13,16 +13,17 @@ module.exports = {
             host: "127.0.0.1",
             port: 8545, // ganache-cli
             network_id: "*", // Match any network id
-            gas: gasUsage,
+            gas: 6700000,
             gasPrice: 0x01
         },
         coverage: {
             host: "localhost",
             network_id: "*",
             port: 8321,
-            gas: gasUsage,
+            gas: 10000000000000,
             gasPrice: 0x01
         },
+
         mainnet: {
             network_id: 1,
             provider: function ()

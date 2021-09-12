@@ -15,7 +15,7 @@ import "./ERC777_Token.sol";
  * Any call to transfer against this contract should fail
  * with insufficient funds since no tokens will be issued there.
  */
-contract ERC777_TokenV2 is Initializable, ERC777_Token {
+contract ERC777_TokenV2 is ERC777_Token {
     /**
      * DATA
      */

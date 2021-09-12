@@ -140,7 +140,7 @@ contract ERC777_Token is Initializable, ERC777_UpgradePauseFreeze {
         uint256 amount,
         bytes memory userData,
         bytes memory operatorData
-    ) public whenNotPausedOrFrozen onlyTreasury {
+    ) public whenNotPausedOrFrozen onlyTreasuryOperator {
         _mint(to, amount, userData, operatorData, true);
     }
 

@@ -1,12 +1,14 @@
 // see: https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/tree/master/test/token/ERC777
 
-const Token = artifacts.require('ERC777_Token.sol');
+const Token = artifacts.require('ERC777_TokenV3.sol');
 const { deployProxy } = require('@openzeppelin/truffle-upgrades');
 const ERC777SenderRecipientMock = artifacts.require('ERC777SenderRecipientMockUpgradeable');
 
 const { BN, expectEvent, expectRevert, singletons, constants } = require('@openzeppelin/test-helpers');
 const { ZERO_ADDRESS } = constants;
 const { expect } = require('chai');
+const TimeTravel = require("./TimeTravel");
+
 const {
     withNoERC777TokensSenderOrRecipient,
 } = require('./ERC777.behavior');
@@ -17,6 +19,11 @@ console.log(process.env.TOKEN_NAME, process.env.TOKEN_SYMBOL, initialSupply.toSt
 const dataInception = web3.utils.sha3('inception');
 const dataInUserTransaction = web3.utils.sha3('OZ777TestdataInUserTransaction');
 const dataInOperatorTransaction = web3.utils.sha3('OZ777TestdataInOperatorTransaction');
+
+const testBasics = false;
+const testV1 = false;
+const testV3 = true;
+const bn1 = new BN("1" + "0".repeat(18));
 
 // Test that Token operates correctly as an ERC20Basic token.
 contract(process.env.TOKEN_NAME, (accounts) =>
@@ -41,6 +48,9 @@ contract(process.env.TOKEN_NAME, (accounts) =>
 
         if (useProxy)
         {
+            //
+            // TODO: do all deployments and updates to test
+            //
             this.token = await deployProxy(Token, [tokenArgs.name, tokenArgs.symbol, tokenArgs.defaultOperators, tokenArgs.initialSupply, tokenArgs.treasury, tokenArgs.data, tokenArgs.operationData], { treasury, initializer: 'initialize' });
         }
         else
@@ -67,356 +77,408 @@ contract(process.env.TOKEN_NAME, (accounts) =>
         }
     });
 
-    it(`symbol ${tokenArgs.symbol}`, () => { });
-    it(`initialSupply ${tokenArgs.initialSupply.toString()}`, () => { });
-    it(`registryFunder ${registryFunder}`, () => { });
-    it(`treasury ${tokenArgs.treasury}`, () => { });
-    it(`first operator ${tokenArgs.defaultOperators[0]}`, () => { });
-    it(`second operator ${tokenArgs.defaultOperators[1]}`, () => { });
-    it(`new operator ${newOperator}`, () => { });
-    it(`user account ${anyone}`, () => { });
-    it(`treasury operator ${treasuryOperator}`, () => { });
-
-    it('upgrade smart-contract', async () =>
+    if (testBasics)
     {
-        //console.log(tokenArgs);
-        /* https://docs.openzeppelin.com/upgrades-plugins/1.x/
-        it('works before and after upgrading', async function ()
-        {
-            const instance = await upgrades.deployProxy(Box, [42]);
-            assert.strictEqual(await instance.retrieve(), 42);
-
-            await upgrades.upgradeProxy(instance.address, BoxV2);
-            assert.strictEqual(await instance.retrieve(), 42);
-        });
-        */
-    });
-
-    describe('basic information', () =>
+        it(`symbol ${tokenArgs.symbol}`, () => { });
+        it(`initialSupply ${tokenArgs.initialSupply.toString()}`, () => { });
+        it(`registryFunder ${registryFunder}`, () => { });
+        it(`treasury ${tokenArgs.treasury}`, () => { });
+        it(`first operator ${tokenArgs.defaultOperators[0]}`, () => { });
+        it(`second operator ${tokenArgs.defaultOperators[1]}`, () => { });
+        it(`new operator ${newOperator}`, () => { });
+        it(`user account ${anyone}`, () => { });
+        it(`treasury operator ${treasuryOperator}`, () => { });
+    }
+    //
+    // V1
+    //
+    if (testV1)
     {
-        it('returns the name', async () =>
+        describe('basic information', () =>
         {
-            expect(await this.token.name()).to.equal(tokenArgs.name);
-        });
-
-        it('returns the symbol', async () =>
-        {
-            expect(await this.token.symbol()).to.equal(tokenArgs.symbol);
-        });
-
-        it('returns a granularity of 1', async () =>
-        {
-            expect(await this.token.granularity()).to.be.bignumber.equal('1');
-        });
-
-        it('returns the default operators', async () =>
-        {
-            expect(await this.token.defaultOperators()).to.deep.equal(tokenArgs.defaultOperators);
-        });
-
-        it('default operators are operators for all accounts', async () =>
-        {
-            for (const operator of tokenArgs.defaultOperators)
+            it('returns the name', async () =>
             {
-                expect(await this.token.isOperatorFor(operator, anyone)).to.equal(true);
+                expect(await this.token.name()).to.equal(tokenArgs.name);
+            });
+
+            it('returns the symbol', async () =>
+            {
+                expect(await this.token.symbol()).to.equal(tokenArgs.symbol);
+            });
+
+            it('returns a granularity of 1', async () =>
+            {
+                expect(await this.token.granularity()).to.be.bignumber.equal('1');
+            });
+
+            it('returns the default operators', async () =>
+            {
+                expect(await this.token.defaultOperators()).to.deep.equal(tokenArgs.defaultOperators);
+            });
+
+            it('default operators are operators for all accounts', async () =>
+            {
+                for (const operator of tokenArgs.defaultOperators)
+                {
+                    expect(await this.token.isOperatorFor(operator, anyone)).to.equal(true);
+                }
+            });
+
+            it('returns the total supply', async () =>
+            {
+                expect(await this.token.totalSupply()).to.be.bignumber.equal(initialSupply);
+            });
+
+            it('returns 18 when decimals is called', async () =>
+            {
+                expect(await this.token.decimals()).to.be.bignumber.equal('18');
+            });
+
+            it('the ERC777Token interface is registered in the registry', async () =>
+            {
+                expect(await this.erc1820.getInterfaceImplementer(this.token.address, web3.utils.soliditySha3('ERC777Token')))
+                    .to.equal(this.token.address);
+            });
+
+            it('the ERC20Token interface is registered in the registry', async () =>
+            {
+                expect(await this.erc1820.getInterfaceImplementer(this.token.address, web3.utils.soliditySha3('ERC20Token')))
+                    .to.equal(this.token.address);
+            });
+        });
+
+        describe('balanceOf', () =>
+        {
+            context('for an account with no tokens', () =>
+            {
+                it(`returns ZERO_ADDRESS ${ZERO_ADDRESS} == zero`, async () =>
+                {
+                    expect(await this.token.balanceOf(ZERO_ADDRESS)).to.be.bignumber.equal('0');
+                });
+
+                it(`returns registryFunder ${registryFunder} == zero`, async () =>
+                {
+                    expect(await this.token.balanceOf(registryFunder)).to.be.bignumber.equal('0');
+                });
+
+                it(`returns first operator ${tokenArgs.defaultOperators[0]} == zero`, async () =>
+                {
+                    expect(await this.token.balanceOf(tokenArgs.defaultOperators[0])).to.be.bignumber.equal('0');
+                });
+
+                it(`returns second operator ${tokenArgs.defaultOperators[1]} == zero`, async () =>
+                {
+                    expect(await this.token.balanceOf(tokenArgs.defaultOperators[1])).to.be.bignumber.equal('0');
+                });
+
+                it(`returns anyone ${anyone} == zero`, async () =>
+                {
+                    expect(await this.token.balanceOf(anyone)).to.be.bignumber.equal('0');
+                });
+            });
+
+            context('for an account with tokens', () =>
+            {
+                it(`returns treasury ${treasury} == initialSupply ${initialSupply}`, async () =>
+                {
+                    expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(initialSupply);
+                });
+            });
+        });
+
+        describe(`only treasury ${treasury} can mint tokens`, () =>
+        {
+            context(`only treasury ${treasury} can mint the tokens of the treasury`, () =>
+            {
+                it(`reverts treasury ${treasury} == initialSupply using ${registryFunder}`, async () =>
+                {
+                    await expectRevert.unspecified(
+                        this.token.treasuryMint(new BN('1'), dataInUserTransaction, dataInOperatorTransaction, { from: registryFunder }),
+                    );
+                    expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+                });
+
+                it(`reverts treasury ${treasury} == initialSupply using defaultOperatorA: ${defaultOperatorA}`, async () =>
+                {
+                    await expectRevert.unspecified(
+                        this.token.treasuryMint(new BN('1'), dataInUserTransaction, dataInOperatorTransaction, { from: defaultOperatorA }),
+                    );
+                    expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+                });
+
+                it(`reverts treasury ${treasury} == initialSupply using defaultOperatorB: ${defaultOperatorB}`, async () =>
+                {
+                    await expectRevert.unspecified(
+                        this.token.treasuryMint(new BN('1'), dataInUserTransaction, dataInOperatorTransaction, { from: defaultOperatorB }),
+                    );
+                    expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+                });
+
+                it(`reverts treasury ${treasury} == initialSupply using anyone: ${anyone}`, async () =>
+                {
+                    await expectRevert.unspecified(
+                        this.token.treasuryMint(new BN('1'), dataInUserTransaction, dataInOperatorTransaction, { from: anyone }),
+                    );
+                    expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+                });
+
+                it(`returns treasury ${treasury} == initialSupply +1`, async () =>
+                {
+                    await this.token.treasuryMint(new BN('1'), dataInUserTransaction, dataInOperatorTransaction, { from: treasury });
+                    const balanceAfterMint = initialSupply.addn(1);
+                    const balanceCurrent = await this.token.balanceOf(treasury);
+
+                    expect(balanceCurrent).to.be.bignumber.equal(balanceAfterMint);
+                });
+
+                it(`returns anyone ${anyone} == 1 using treasury operator: ${treasuryOperator}`, async () =>
+                {
+                    await this.token.operatorMintTo(anyone, bn1, dataInUserTransaction, dataInOperatorTransaction, { from: treasuryOperator });
+                    const balanceAnyone = await this.token.balanceOf(anyone);
+
+                    expect(balanceAnyone).to.be.bignumber.equal(bn1);
+                });
+            });
+
+            const selfAccountCanCanBurnItsTokens = (amount, registryFunder, treasury, defaultOperatorA, defaultOperatorB, anyone) =>
+            {
+                it(`returns treasury ${treasury} == initialSupply using ${registryFunder}`, async () =>
+                {
+                    await expectRevert.unspecified(
+                        this.token.burn(amount, dataInUserTransaction, { from: registryFunder }),
+                    );
+                    expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+                });
+
+                it(`returns treasury ${treasury} == initialSupply using defaultOperatorA: ${defaultOperatorA}`, async () =>
+                {
+                    await expectRevert.unspecified(
+                        this.token.burn(amount, dataInUserTransaction, { from: registryFunder }),
+                    );
+                    expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+                });
+
+                it(`returns treasury ${treasury} == initialSupply using defaultOperatorB: ${defaultOperatorB}`, async () =>
+                {
+                    await expectRevert.unspecified(
+                        this.token.burn(amount, dataInUserTransaction, { from: registryFunder }),
+                    );
+                    expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+                });
+
+                it(`returns treasury ${treasury} == initialSupply using anyone: ${anyone}`, async () =>
+                {
+                    await expectRevert.unspecified(
+                        this.token.burn(amount, dataInUserTransaction, { from: anyone }),
+                    );
+                    expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+                });
+
+                it(`returns treasury ${treasury} == initialSupply -1 using ${treasury}`, async () =>
+                {
+                    this.token.burn(amount, dataInUserTransaction, { from: treasury });
+                    expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply.addn(-1));
+                });
+
+                it(`returns anyone ${anyone} == 0 after transfering 1`, async () =>
+                {
+                    //expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+
+                    await this.token.send(anyone, new BN(1), dataInUserTransaction, { from: treasury });
+                    expect(await this.token.balanceOf(anyone)).to.be.bignumber.equal(new BN(1));
+
+                    await this.token.operatorBurn(anyone, new BN(1), dataInUserTransaction, dataInOperatorTransaction, { from: anyone });
+                    expect(await this.token.balanceOf(anyone)).to.be.bignumber.equal(new BN(0));
+                });
             }
-        });
 
-        it('returns the total supply', async () =>
-        {
-            expect(await this.token.totalSupply()).to.be.bignumber.equal(initialSupply);
-        });
-
-        it('returns 18 when decimals is called', async () =>
-        {
-            expect(await this.token.decimals()).to.be.bignumber.equal('18');
-        });
-
-        it('the ERC777Token interface is registered in the registry', async () =>
-        {
-            expect(await this.erc1820.getInterfaceImplementer(this.token.address, web3.utils.soliditySha3('ERC777Token')))
-                .to.equal(this.token.address);
-        });
-
-        it('the ERC20Token interface is registered in the registry', async () =>
-        {
-            expect(await this.erc1820.getInterfaceImplementer(this.token.address, web3.utils.soliditySha3('ERC20Token')))
-                .to.equal(this.token.address);
-        });
-    });
-
-    describe('balanceOf', () =>
-    {
-        context('for an account with no tokens', () =>
-        {
-            it(`returns ZERO_ADDRESS ${ZERO_ADDRESS} == zero`, async () =>
+            context(`only the holder account can burn the tokens of itself`, () =>
             {
-                expect(await this.token.balanceOf(ZERO_ADDRESS)).to.be.bignumber.equal('0');
+                selfAccountCanCanBurnItsTokens(new BN(1), registryFunder, treasury, defaultOperatorA, defaultOperatorB, anyone);
             });
 
-            it(`returns registryFunder ${registryFunder} == zero`, async () =>
+            /*
+            removeBalance(this.token, treasury);
+    
+            it(`only treasury ${treasury} can burn the tokens of the treasury`, async () =>
             {
-                expect(await this.token.balanceOf(registryFunder)).to.be.bignumber.equal('0');
+                burnAllBalance
+                mintInitialSupply,
+                    ,
+                    expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(initialSupply);
             });
-
-            it(`returns first operator ${tokenArgs.defaultOperators[0]} == zero`, async () =>
+    
+            it(`only treasury ${treasury} can mint tokens`, async () =>
             {
-                expect(await this.token.balanceOf(tokenArgs.defaultOperators[0])).to.be.bignumber.equal('0');
-            });
-
-            it(`returns second operator ${tokenArgs.defaultOperators[1]} == zero`, async () =>
-            {
-                expect(await this.token.balanceOf(tokenArgs.defaultOperators[1])).to.be.bignumber.equal('0');
-            });
-
-            it(`returns anyone ${anyone} == zero`, async () =>
-            {
-                expect(await this.token.balanceOf(anyone)).to.be.bignumber.equal('0');
-            });
-        });
-
-        context('for an account with tokens', () =>
-        {
-            it(`returns treasury ${treasury} == initialSupply ${initialSupply}`, async () =>
-            {
+                burnAllBalance
+                mintInitialSupply,
+                    ,
                 expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(initialSupply);
             });
-        });
-    });
-
-    describe(`only treasury ${treasury} can mint tokens`, () =>
-    {
-        context(`only treasury ${treasury} can mint the tokens of the treasury`, () =>
-        {
-            it(`reverts treasury ${treasury} == initialSupply using ${registryFunder}`, async () =>
-            {
-                await expectRevert.unspecified(
-                    this.token.treasuryMint(new BN('1'), dataInUserTransaction, dataInOperatorTransaction, { from: registryFunder }),
-                );
-                expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
-            });
-
-            it(`reverts treasury ${treasury} == initialSupply using defaultOperatorA: ${defaultOperatorA}`, async () =>
-            {
-                await expectRevert.unspecified(
-                    this.token.treasuryMint(new BN('1'), dataInUserTransaction, dataInOperatorTransaction, { from: defaultOperatorA }),
-                );
-                expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
-            });
-
-            it(`reverts treasury ${treasury} == initialSupply using defaultOperatorB: ${defaultOperatorB}`, async () =>
-            {
-                await expectRevert.unspecified(
-                    this.token.treasuryMint(new BN('1'), dataInUserTransaction, dataInOperatorTransaction, { from: defaultOperatorB }),
-                );
-                expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
-            });
-
-            it(`reverts treasury ${treasury} == initialSupply using anyone: ${anyone}`, async () =>
-            {
-                await expectRevert.unspecified(
-                    this.token.treasuryMint(new BN('1'), dataInUserTransaction, dataInOperatorTransaction, { from: anyone }),
-                );
-                expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
-            });
-
-            it(`returns treasury ${treasury} == initialSupply +1`, async () =>
-            {
-                await this.token.treasuryMint(new BN('1'), dataInUserTransaction, dataInOperatorTransaction, { from: treasury });
-                const balanceAfterMint = initialSupply.addn(1);
-                const balanceCurrent = await this.token.balanceOf(treasury);
-
-                expect(balanceCurrent).to.be.bignumber.equal(balanceAfterMint);
-            });
-
-            it(`returns anyone ${anyone} == 1 using treasury operator: ${treasuryOperator}`, async () =>
-            {
-                const bn1 = new BN(1);
-                await this.token.operatorMintTo(anyone, bn1, dataInUserTransaction, dataInOperatorTransaction, { from: treasuryOperator });
-                const balanceAnyone = await this.token.balanceOf(anyone);
-
-                expect(balanceAnyone).to.be.bignumber.equal(bn1);
-            });
+            */
         });
 
-        const selfAccountCanCanBurnItsTokens = (amount, registryFunder, treasury, defaultOperatorA, defaultOperatorB, anyone) =>
+        describe('frozen accounts', () =>
         {
-            it(`returns treasury ${treasury} == initialSupply using ${registryFunder}`, async () =>
+            const freezeAndUnfreezeAccount = (address, operator) =>
             {
-                await expectRevert.unspecified(
-                    this.token.burn(amount, dataInUserTransaction, { from: registryFunder }),
-                );
-                expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+                it(`freeze and unfreeze ${address}`, async () =>
+                {
+                    let logs;
+                    ({ logs } = await this.token.freeze(address, { from: operator }));
+
+                    expectEvent.inLogs(logs, 'AddressFrozen', {
+                        addr: address
+                    });
+
+                    ({ logs } = await this.token.unfreeze(address, { from: operator }));
+                    expectEvent.inLogs(logs, 'AddressUnfrozen', {
+                        addr: address
+                    });
+                });
+            }
+
+            it('treasury cannot be frozen', async () =>
+            {
+                await expectRevert.unspecified(this.token.freeze(treasury, { from: registryFunder }));
+                await expectRevert.unspecified(this.token.freeze(treasury, { from: treasury }));    // even by mistake
             });
 
-            it(`returns treasury ${treasury} == initialSupply using defaultOperatorA: ${defaultOperatorA}`, async () =>
+            it('anyone cannot freeze accounts', async () =>
             {
-                await expectRevert.unspecified(
-                    this.token.burn(amount, dataInUserTransaction, { from: registryFunder }),
-                );
-                expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+                await expectRevert.unspecified(this.token.freeze(defaultOperatorA, { from: anyone }));
             });
 
-            it(`returns treasury ${treasury} == initialSupply using defaultOperatorB: ${defaultOperatorB}`, async () =>
+            it('registryFunder cannot freeze accounts', async () =>
             {
-                await expectRevert.unspecified(
-                    this.token.burn(amount, dataInUserTransaction, { from: registryFunder }),
-                );
-                expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+                await expectRevert.unspecified(this.token.freeze(defaultOperatorA, { from: registryFunder }));
             });
 
-            it(`returns treasury ${treasury} == initialSupply using anyone: ${anyone}`, async () =>
+            it('treasury can freeze accounts', async () =>
             {
-                await expectRevert.unspecified(
-                    this.token.burn(amount, dataInUserTransaction, { from: anyone }),
-                );
-                expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
+                freezeAndUnfreezeAccount(defaultOperatorA, treasury);
             });
 
-            it(`returns treasury ${treasury} == initialSupply -1 using ${treasury}`, async () =>
+            it('set a new protector and freeze anyone account', async () =>
             {
-                this.token.burn(amount, dataInUserTransaction, { from: treasury });
-                expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply.addn(-1));
+                let logs;
+                ({ logs } = await this.token.setAssetProtectionRole(defaultOperatorA, { from: treasury }));
+
+                expectEvent.inLogs(logs, 'AssetProtectionRoleSet', {
+                    oldAssetProtectionRole: treasury,
+                    newAssetProtectionRole: defaultOperatorA
+                });
+
+                freezeAndUnfreezeAccount(anyone, defaultOperatorA);
+
+                await expectRevert.unspecified(this.token.freeze(treasury, { from: defaultOperatorA }));    // no one can freeze the tresury account
+                await expectRevert.unspecified(this.token.wipeFrozenAddress(treasury, web3.utils.sha3('badboy'), { from: defaultOperatorA }));    // no one can wipe the tresury account
+
+
+                ({ logs } = await this.token.setAssetProtectionRole(treasury, { from: defaultOperatorA }));
+
+                expectEvent.inLogs(logs, 'AssetProtectionRoleSet', {
+                    oldAssetProtectionRole: defaultOperatorA,
+                    newAssetProtectionRole: treasury
+                });
             });
 
-            it(`returns anyone ${anyone} == 0 after transfering 1`, async () =>
+            it('transfer 1 token to anyone and wipe account', async () =>
             {
-                //expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(tokenArgs.initialSupply);
-
                 await this.token.send(anyone, new BN(1), dataInUserTransaction, { from: treasury });
                 expect(await this.token.balanceOf(anyone)).to.be.bignumber.equal(new BN(1));
 
-                await this.token.operatorBurn(anyone, new BN(1), dataInUserTransaction, dataInOperatorTransaction, { from: anyone });
-                expect(await this.token.balanceOf(anyone)).to.be.bignumber.equal(new BN(0));
-            });
-        }
+                await expectRevert.unspecified(this.token.wipeFrozenAddress(treasury, web3.utils.sha3('badboy'), { from: treasury }));    // no one can wipe the tresury account
 
-        context(`only the holder account can burn the tokens of itself`, () =>
-        {
-            selfAccountCanCanBurnItsTokens(new BN(1), registryFunder, treasury, defaultOperatorA, defaultOperatorB, anyone);
-        });
-
-        /*
-        removeBalance(this.token, treasury);
-
-        it(`only treasury ${treasury} can burn the tokens of the treasury`, async () =>
-        {
-            burnAllBalance
-            mintInitialSupply,
-                ,
-                expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(initialSupply);
-        });
-
-        it(`only treasury ${treasury} can mint tokens`, async () =>
-        {
-            burnAllBalance
-            mintInitialSupply,
-                ,
-            expect(await this.token.balanceOf(treasury)).to.be.bignumber.equal(initialSupply);
-        });
-        */
-    });
-
-    describe('frozen accounts', () =>
-    {
-        const freezeAndUnfreezeAccount = (address, operator) =>
-        {
-            it(`freeze and unfreeze ${address}`, async () =>
-            {
                 let logs;
-                ({ logs } = await this.token.freeze(address, { from: operator }));
+                ({ logs } = await this.token.freeze(anyone, { from: treasury }));
 
                 expectEvent.inLogs(logs, 'AddressFrozen', {
-                    addr: address
+                    addr: anyone
+                });
+                ({ logs } = await this.token.wipeFrozenAddress(anyone, web3.utils.sha3('badboy'), { from: treasury }));
+
+                expectEvent.inLogs(logs, 'FrozenAddressWiped', {
+                    addr: anyone
                 });
 
-                ({ logs } = await this.token.unfreeze(address, { from: operator }));
-                expectEvent.inLogs(logs, 'AddressUnfrozen', {
-                    addr: address
-                });
-            });
-        }
-
-        it('treasury cannot be frozen', async () =>
-        {
-            await expectRevert.unspecified(this.token.freeze(treasury, { from: registryFunder }));
-            await expectRevert.unspecified(this.token.freeze(treasury, { from: treasury }));    // even by mistake
-        });
-
-        it('anyone cannot freeze accounts', async () =>
-        {
-            await expectRevert.unspecified(this.token.freeze(defaultOperatorA, { from: anyone }));
-        });
-
-        it('registryFunder cannot freeze accounts', async () =>
-        {
-            await expectRevert.unspecified(this.token.freeze(defaultOperatorA, { from: registryFunder }));
-        });
-
-        it('treasury can freeze accounts', async () =>
-        {
-            freezeAndUnfreezeAccount(defaultOperatorA, treasury);
-        });
-
-        it('set a new protector and freeze anyone account', async () =>
-        {
-            let logs;
-            ({ logs } = await this.token.setAssetProtectionRole(defaultOperatorA, { from: treasury }));
-
-            expectEvent.inLogs(logs, 'AssetProtectionRoleSet', {
-                oldAssetProtectionRole: treasury,
-                newAssetProtectionRole: defaultOperatorA
-            });
-
-            freezeAndUnfreezeAccount(anyone, defaultOperatorA);
-
-            await expectRevert.unspecified(this.token.freeze(treasury, { from: defaultOperatorA }));    // no one can freeze the tresury account
-            await expectRevert.unspecified(this.token.wipeFrozenAddress(treasury, web3.utils.sha3('badboy'), { from: defaultOperatorA }));    // no one can wipe the tresury account
-
-
-            ({ logs } = await this.token.setAssetProtectionRole(treasury, { from: defaultOperatorA }));
-
-            expectEvent.inLogs(logs, 'AssetProtectionRoleSet', {
-                oldAssetProtectionRole: defaultOperatorA,
-                newAssetProtectionRole: treasury
+                freezeAndUnfreezeAccount(anyone, defaultOperatorA);
             });
         });
 
-        it('transfer 1 token to anyone and wipe account', async () =>
+        it('with no ERC777TokensSender and no ERC777TokensRecipient implementers', async () =>
         {
-            await this.token.send(anyone, new BN(1), dataInUserTransaction, { from: treasury });
-            expect(await this.token.balanceOf(anyone)).to.be.bignumber.equal(new BN(1));
+            let balances = {}
+            balances.initialSupply = (await this.token.initialSupply()).toString();
+            balances.registryFunder = (await this.token.balanceOf(registryFunder)).toString();
+            balances.treasury = (await this.token.balanceOf(treasury)).toString();
+            balances.anyone = (await this.token.balanceOf(anyone)).toString();
+            balances.defaultOperatorA = (await this.token.balanceOf(defaultOperatorA)).toString();
+            balances.defaultOperatorB = (await this.token.balanceOf(defaultOperatorB)).toString();
+            balances.newOperator = (await this.token.balanceOf(newOperator)).toString();
+            console.log(balances);
 
-            await expectRevert.unspecified(this.token.wipeFrozenAddress(treasury, web3.utils.sha3('badboy'), { from: treasury }));    // no one can wipe the tresury account
-
-            let logs;
-            ({ logs } = await this.token.freeze(anyone, { from: treasury }));
-
-            expectEvent.inLogs(logs, 'AddressFrozen', {
-                addr: anyone
-            });
-            ({ logs } = await this.token.wipeFrozenAddress(anyone, web3.utils.sha3('badboy'), { from: treasury }));
-
-            expectEvent.inLogs(logs, 'FrozenAddressWiped', {
-                addr: anyone
-            });
-
-            freezeAndUnfreezeAccount(anyone, defaultOperatorA);
+            withNoERC777TokensSenderOrRecipient(this.token, treasury, anyone, defaultOperatorA, defaultOperatorB, newOperator, dataInUserTransaction, dataInOperatorTransaction);
         });
-    });
-
-    it('with no ERC777TokensSender and no ERC777TokensRecipient implementers', async () =>
+    }
+    //
+    // V3
+    //
+    if (testV3)
     {
-        let balances = {}
-        balances.initialSupply = (await this.token.initialSupply()).toString();
-        balances.registryFunder = (await this.token.balanceOf(registryFunder)).toString();
-        balances.treasury = (await this.token.balanceOf(treasury)).toString();
-        balances.anyone = (await this.token.balanceOf(anyone)).toString();
-        balances.defaultOperatorA = (await this.token.balanceOf(defaultOperatorA)).toString();
-        balances.defaultOperatorB = (await this.token.balanceOf(defaultOperatorB)).toString();
-        balances.newOperator = (await this.token.balanceOf(newOperator)).toString();
-        console.log(balances);
+        describe('staking functionality', () =>
+        {
+            it(`flexible stake of 1`, async () =>
+            {
+                //
+                // Toss a coin to anyone
+                //
+                await this.token.operatorMintTo(anyone, bn1, dataInUserTransaction, dataInOperatorTransaction, { from: treasuryOperator });
+                const balanceAnyone = await this.token.balanceOf(anyone);
+                expect(balanceAnyone).to.be.bignumber.equal(bn1);
 
-        withNoERC777TokensSenderOrRecipient(this.token, treasury, anyone, defaultOperatorA, defaultOperatorB, newOperator, dataInUserTransaction, dataInOperatorTransaction);
-    });
+                //
+                // Stake 1 coin
+                //
+
+                console.log(`balanceAnyone: ${balanceAnyone}`);
+                this.token.flexibleStake(bn1, { from: anyone });
+                expect(await this.token.flexibleStakeBalanceOf(anyone, { from: anyone })).to.be.bignumber.equal(bn1);
+            });
+        });
+
+        describe("time travel...", () =>
+        {
+            it("should advance the blockchain forward a block", async () =>
+            {
+                const originalBlock = await web3.eth.getBlock('latest');
+                const originalBlockHash = originalBlock.hash;
+                let newBlockHash = originalBlockHash;
+
+                newBlockHash = await TimeTravel.advanceBlock();
+
+                assert.notEqual(originalBlockHash, newBlockHash);
+            });
+
+            it("should be able to advance time and block together", async () =>
+            {
+                const advancement = 600;
+                const originalBlock = await web3.eth.getBlock('latest');
+                const newBlock = await TimeTravel.advanceTimeAndBlock(advancement);
+                const timeDiff = newBlock.timestamp - originalBlock.timestamp;
+
+                assert.isTrue(timeDiff >= advancement);
+            });
+        });
+
+        describe('check my staking rewards', () =>
+        {
+            it(`returns anyone ${anyone} == 1 using treasury: ${treasury}`, async () =>
+            {
+                const reward = await this.token.viewFlexibleStakeUnclaimedRewards(anyone, { from: anyone });
+                console.log(`staking reward: ${reward.toString()}`);
+
+            });
+        });
+    }
 });

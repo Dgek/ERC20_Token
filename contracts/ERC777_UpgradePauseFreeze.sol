@@ -154,7 +154,22 @@ contract ERC777_UpgradePauseFreeze is
      * - Caller is the trasury account.
      */
     modifier onlyTreasury() {
-        require(!isTreasury(_msgSender()), "only for reasury account");
+        require(!isTreasury(_msgSender()), "only for treasury account");
+        _;
+    }
+
+    /**
+     * @dev Modifier to make a function callable only when is a treasury operator.
+     *
+     * Requirements:
+     *
+     * - Caller is the trasury account.
+     */
+    modifier onlyTreasuryOperator() {
+        require(
+            isOperatorFor(_msgSender(), _treasuryAccount),
+            "caller is not a treasury operator"
+        );
         _;
     }
 
