@@ -10,58 +10,132 @@ import "@openzeppelin/contracts/utils/Context.sol";
 contract CanStakeFlexible {
     struct Stake {
         uint256 amount;
-        uint64 sinceBlock;
-        uint64 untilBlock;
+        uint256 sinceBlock;
+        address delegateTo;
+        uint256 percentage;
     }
     mapping(address => Stake) internal stakes;
     uint256 public constant percentPerBlock = 1; // TODO make it more interesting
 
-    event LogPayout(address user, uint256 stakedAmount, uint256 rewardAmount);
+    event LogStake(
+        address holder,
+        uint256 amount,
+        uint256 sinceBlock,
+        address delegateTo,
+        uint256 percentage
+    );
 
-    function _flexibleStake(uint256 _amount) internal {
-        stakes[msg.sender] = (Stake(_amount, uint64(block.number), 0));
-    }
+    event LogUnstake(
+        address user,
+        uint256 stakedAmount,
+        uint256 rewardAmountToHolder,
+        address rewardToDelegateTo,
+        uint256 rewardAmountToDelegate
+    );
 
-    function _flexibleUntake(address _address) internal {
-        require(msg.sender == _address, "Not your stake");
-        require(stakes[msg.sender].untilBlock == 0, "Already unstaked");
+    function _calculateStakeReward()
+        internal
+        view
+        returns (
+            uint256,
+            address,
+            uint256
+        )
+    {
+        uint256 currentBlock = block.number;
 
-        stakes[msg.sender].untilBlock = uint64(block.number);
-
-        uint256 stakedForBlocks = (block.number -
+        uint256 stakedForBlocks = (currentBlock -
             stakes[msg.sender].sinceBlock);
+        uint256 percentageToUser = 100 - stakes[msg.sender].percentage;
+        uint256 percentageToDelegate = 100 - percentageToUser;
 
-        uint256 rewardAmount = (stakes[msg.sender].amount *
-            stakedForBlocks *
-            percentPerBlock) / 100;
+        uint256 rewardAmount = (stakedForBlocks * percentPerBlock);
+        uint256 rewardAmountToHolder = rewardAmount / percentageToUser;
+        uint256 rewardAmountDelegated = rewardAmount / percentageToDelegate;
 
-        emit LogPayout(msg.sender, stakes[msg.sender].amount, rewardAmount);
+        return (
+            rewardAmountToHolder,
+            stakes[msg.sender].delegateTo,
+            rewardAmountDelegated
+        );
     }
 
-    function _flexibleStakeBalanceOf(address _address)
-        internal
-        view
-        returns (uint256)
-    {
-        require(msg.sender == _address, "Not your stake");
+    function _flexibleStake(
+        uint256 _amount,
+        address _delegateTo,
+        uint256 _percentage
+    ) internal {
+        require(
+            stakes[msg.sender].delegateTo == address(0),
+            "You are already delegating"
+        );
 
-        return stakes[msg.sender].amount;
+        require(
+            _delegateTo != address(0),
+            "Cannot delegate to the zero address"
+        );
+
+        require(_percentage <= 100, "Cannot delegate more than 100 percentage");
+
+        stakes[msg.sender] = (
+            Stake(_amount, block.number, _delegateTo, _percentage)
+        );
+
+        emit LogStake(
+            msg.sender,
+            stakes[msg.sender].amount,
+            stakes[msg.sender].sinceBlock,
+            stakes[msg.sender].delegateTo,
+            stakes[msg.sender].percentage
+        );
     }
 
-    function _viewFlexibleStakeUnclaimedRewards(address _address)
+    function _flexibleUntake()
+        internal
+        returns (
+            uint256,
+            address,
+            uint256
+        )
+    {
+        require(stakes[msg.sender].sinceBlock != 0, "Nothing to unstake");
+
+        (
+            uint256 rewardAmountToHolder,
+            address rewardToDelegateTo,
+            uint256 rewardAmountToDelegate
+        ) = _calculateStakeReward();
+
+        stakes[msg.sender].sinceBlock = block.number;
+
+        emit LogUnstake(
+            msg.sender,
+            stakes[msg.sender].amount,
+            rewardAmountToHolder,
+            rewardToDelegateTo,
+            rewardAmountToDelegate
+        );
+
+        return (
+            rewardAmountToHolder,
+            rewardToDelegateTo,
+            rewardAmountToDelegate
+        );
+    }
+
+    function _flexibleStakeBalance()
         internal
         view
-        returns (uint256)
+        returns (
+            uint256,
+            address,
+            uint256
+        )
     {
-        uint256 totalUnclaimedRewards;
-
-        if (stakes[_address].untilBlock == 0) {
-            uint256 stakedForBlocks = (block.number -
-                stakes[_address].sinceBlock);
-            uint256 rewardAmount = (stakedForBlocks * percentPerBlock) / 100;
-            totalUnclaimedRewards += rewardAmount;
-        }
-
-        return totalUnclaimedRewards;
+        return (
+            stakes[msg.sender].amount,
+            stakes[msg.sender].delegateTo,
+            stakes[msg.sender].percentage
+        );
     }
 }

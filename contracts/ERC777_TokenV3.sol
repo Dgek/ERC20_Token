@@ -9,29 +9,47 @@ import "./FlexibleStake.sol";
  * @dev staking functionality
  */
 contract ERC777_TokenV3 is ERC777_TokenV2, CanStakeFlexible {
-    function flexibleStake(uint256 _amount) external {
-        _flexibleStake(_amount);
+    function flexibleStake(address _delegateTo, uint256 _percentage)
+        external
+        whenNotPausedOrFrozen
+    {
+        uint256 amount = balanceOf(_msgSender());
+        _flexibleStake(amount, _delegateTo, _percentage);
     }
 
-    function flexibleUntake(address _address) external whenNotPausedOrFrozen {
-        _flexibleUntake(_address);
+    function flexibleUntake() external whenNotPausedOrFrozen {
+        (
+            uint256 rewardToHolder,
+            address delegateTo,
+            uint256 rewardToDelegate
+        ) = _flexibleUntake();
+        _mint(_msgSender(), rewardToHolder, "", "", true);
+        _mint(delegateTo, rewardToDelegate, "", "", true);
     }
 
-    function flexibleStakeBalanceOf(address _address)
+    function flexibleStakeBalance()
         external
         view
         whenNotPausedOrFrozen
-        returns (uint256)
+        returns (
+            uint256,
+            address,
+            uint256
+        )
     {
-        return _flexibleStakeBalanceOf(_address);
+        return _flexibleStakeBalance();
     }
 
-    function viewFlexibleStakeUnclaimedRewards(address _address)
+    function calculateStakeReward()
         external
         view
         whenNotPausedOrFrozen
-        returns (uint256)
+        returns (
+            uint256,
+            address,
+            uint256
+        )
     {
-        return _viewFlexibleStakeUnclaimedRewards(_address);
+        return _calculateStakeReward();
     }
 }
