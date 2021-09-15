@@ -10,7 +10,6 @@ import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC1820Registry
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC1820ImplementerUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-
 contract ERC777SenderRecipientMockUpgradeable is
     Initializable,
     ContextUpgradeable,

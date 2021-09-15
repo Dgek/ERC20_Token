@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/Context.sol";
+//import "prb-math/contracts/PRBMathUD60x18.sol";
 
 /**
  * @title TokenV3
@@ -14,8 +14,11 @@ contract CanStakeFlexible {
         address delegateTo;
         uint256 percentage;
     }
-    mapping(address => Stake) internal stakes;
-    uint256 public constant percentPerBlock = 1; // TODO make it more interesting
+    mapping(address => Stake) internal _stakes;
+    uint256 private constant MIN_PERCENTAGE_PER_BLOCK = 1;
+    uint256 private constant MAX_PERCENTAGE_PER_BLOCK = 100;
+    uint256 private _rewardExpPower;
+    uint256 private _maxBlocksToCalcReward; // Kinda 30d in MATIC
 
     event LogStake(
         address holder,
@@ -33,7 +36,15 @@ contract CanStakeFlexible {
         uint256 rewardAmountToDelegate
     );
 
-    function _calculateStakeReward()
+    function _setFlexibleStakeRewards(
+        uint256 rewardExpPower,
+        uint256 maxBlocksToCalcReward
+    ) internal {
+        _rewardExpPower = rewardExpPower;
+        _maxBlocksToCalcReward = maxBlocksToCalcReward;
+    }
+
+    function _calculateFlexibleStakeReward()
         internal
         view
         returns (
@@ -45,17 +56,28 @@ contract CanStakeFlexible {
         uint256 currentBlock = block.number;
 
         uint256 stakedForBlocks = (currentBlock -
-            stakes[msg.sender].sinceBlock);
-        uint256 percentageToUser = 100 - stakes[msg.sender].percentage;
+            _stakes[msg.sender].sinceBlock);
+        uint256 percentageToUser = 100 - _stakes[msg.sender].percentage;
         uint256 percentageToDelegate = 100 - percentageToUser;
 
-        uint256 rewardAmount = (stakedForBlocks * percentPerBlock);
+        // log
+        //uint256 range = logMaxPercentPerBlock - logMinPercentPerBlock;
+        //uint256 rewardAmount = (PRBMathUD60x18.log10(stakedForBlocks) -
+        //    logMinPercentPerBlock) / range;
+        // simple
+        //uint256 rewardAmount = (stakedForBlocks * percentPerBlock); Simple
+        // pow
+        uint256 campMaxBlocks = stakedForBlocks > _maxBlocksToCalcReward
+            ? _maxBlocksToCalcReward
+            : stakedForBlocks;
+        uint256 rewardAmount = campMaxBlocks**_rewardExpPower;
+
         uint256 rewardAmountToHolder = rewardAmount / percentageToUser;
         uint256 rewardAmountDelegated = rewardAmount / percentageToDelegate;
 
         return (
             rewardAmountToHolder,
-            stakes[msg.sender].delegateTo,
+            _stakes[msg.sender].delegateTo,
             rewardAmountDelegated
         );
     }
@@ -66,7 +88,7 @@ contract CanStakeFlexible {
         uint256 _percentage
     ) internal {
         require(
-            stakes[msg.sender].delegateTo == address(0),
+            _stakes[msg.sender].delegateTo == address(0),
             "You are already delegating"
         );
 
@@ -74,19 +96,25 @@ contract CanStakeFlexible {
             _delegateTo != address(0),
             "Cannot delegate to the zero address"
         );
+        require(
+            _percentage >= MIN_PERCENTAGE_PER_BLOCK,
+            "Cannot delegate less than 1 percentage"
+        );
+        require(
+            _percentage <= MAX_PERCENTAGE_PER_BLOCK,
+            "Cannot delegate more than 100 percentage"
+        );
 
-        require(_percentage <= 100, "Cannot delegate more than 100 percentage");
-
-        stakes[msg.sender] = (
+        _stakes[msg.sender] = (
             Stake(_amount, block.number, _delegateTo, _percentage)
         );
 
         emit LogStake(
             msg.sender,
-            stakes[msg.sender].amount,
-            stakes[msg.sender].sinceBlock,
-            stakes[msg.sender].delegateTo,
-            stakes[msg.sender].percentage
+            _stakes[msg.sender].amount,
+            _stakes[msg.sender].sinceBlock,
+            _stakes[msg.sender].delegateTo,
+            _stakes[msg.sender].percentage
         );
     }
 
@@ -98,19 +126,19 @@ contract CanStakeFlexible {
             uint256
         )
     {
-        require(stakes[msg.sender].sinceBlock != 0, "Nothing to unstake");
+        require(_stakes[msg.sender].sinceBlock != 0, "Nothing to unstake");
 
         (
             uint256 rewardAmountToHolder,
             address rewardToDelegateTo,
             uint256 rewardAmountToDelegate
-        ) = _calculateStakeReward();
+        ) = _calculateFlexibleStakeReward();
 
-        stakes[msg.sender].sinceBlock = block.number;
+        _stakes[msg.sender].sinceBlock = block.number;
 
         emit LogUnstake(
             msg.sender,
-            stakes[msg.sender].amount,
+            _stakes[msg.sender].amount,
             rewardAmountToHolder,
             rewardToDelegateTo,
             rewardAmountToDelegate
@@ -133,9 +161,9 @@ contract CanStakeFlexible {
         )
     {
         return (
-            stakes[msg.sender].amount,
-            stakes[msg.sender].delegateTo,
-            stakes[msg.sender].percentage
+            _stakes[msg.sender].amount,
+            _stakes[msg.sender].delegateTo,
+            _stakes[msg.sender].percentage
         );
     }
 }

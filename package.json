@@ -7,6 +7,9 @@
         "test": "test"
     },
     "scripts": {
+        "setup": "nvm alias default lts/erbium && nvm use default && npm i && npm audit fix",
+        "lint:sol": "solhint 'contracts/**/*.sol' && prettier -c 'contracts/**/*.sol'",
+        "lint:sol:fix": "prettier --write \"contracts/**/*.sol\"",
         "truffle-abi-Token": "mkdir -p ./bin && cat build/contracts/ERC777_Token.json | jq -c .abi > ./bin/ERC777_Token.abi",
         "truffle-abi-TokenV2": "mkdir -p ./bin && cat build/contracts/ERC777_Tokenv2.json | jq -c .abi > ./bin/ERC777_TokenV2.abi",
         "truffle-bin-Token": "mkdir -p ./bin && cat build/contracts/ERC777_Token.json | jq  -r .bytecode > ./bin/ERC777_Token.bin",
@@ -39,30 +42,22 @@
         "url": "https://github.com/PaTiToMaSteR/ERC777_Token/issues"
     },
     "homepage": "https://github.com/PaTiToMaSteR/ERC777_Token#readme",
-    "dependencies": {},
     "devDependencies": {
-        "@babel/core": "^7.15.0",
-        "@openzeppelin/contracts": "^4.2.0",
-        "@openzeppelin/contracts-ethereum-package": "^3.0.0",
-        "@openzeppelin/contracts-upgradeable": "^4.2.0",
-        "@openzeppelin/test-helpers": "^0.5.12",
-        "@openzeppelin/truffle-upgrades": "^1.8.0",
-        "@openzeppelin/upgrades": "^2.8.0",
-        "@truffle/abi-utils": "^0.2.3",
-        "@truffle/hdwallet-provider": "^1.4.3",
+        "@babel/core": "^7.15.5",
+        "@openzeppelin/contracts-upgradeable": "^4.3.2",
+        "@openzeppelin/test-helpers": "^0.5.13",
+        "@openzeppelin/truffle-upgrades": "^1.9.1",
+        "@truffle/abi-utils": "^0.2.4",
+        "@truffle/hdwallet-provider": "^1.5.0",
         "dotenv": "^10.0.0",
-        "eth-sig-util": "^3.0.1",
         "ganache-cli": "^6.12.2",
-        "solc": "^0.8.6",
-        "solidity-coverage": "^0.7.16",
+        "prettier": "^2.3.0",
+        "prettier-plugin-solidity": "^1.0.0-beta.16",
+        "solc": "^0.8.7-fixed",
+        "solhint": "^3.3.6",
+        "solidity-coverage": "^0.7.17",
         "solium": "^1.2.5",
-        "truffle": "^5.4.5",
+        "truffle": "^5.4.10",
         "truffle-flattener": "^1.5.0"
-    },
-    "resolutions": {
-        "axios": "^0.21.1",
-        "ajv": "^6.12.3",
-        "elliptic": "^6.0.0",
-        "diff": "^3.5.0"
     }
 }

@@ -11,8 +11,6 @@ import "./ERC777_UpgradePauseFreeze.sol";
 contract ERC777_Token is Initializable, ERC777_UpgradePauseFreeze {
     event BeforeTokenTransfer();
 
-    uint256 private _initialSupply;
-
     function initialize(
         string memory name,
         string memory symbol,
@@ -60,7 +58,7 @@ contract ERC777_Token is Initializable, ERC777_UpgradePauseFreeze {
         bytes memory operatorData
     ) internal initializer {
         _mint(treasury, creationSupply, data, operatorData);
-        setTreasury(treasury);
+        _setTreasury(treasury);
     }
 
     /**
@@ -152,10 +150,10 @@ contract ERC777_Token is Initializable, ERC777_UpgradePauseFreeze {
     ) internal override whenNotPausedOrFrozen {
         emit BeforeTokenTransfer();
         require(!paused(), "contract paused");
-        require(!frozen[_msgSender()], "user address frozen");
-        require(!frozen[operator], "operator address frozen");
-        require(!frozen[from], "from address frozen");
-        require(!frozen[to], "to address frozen");
+        require(!_frozen[_msgSender()], "user address frozen");
+        require(!_frozen[operator], "operator address frozen");
+        require(!_frozen[from], "from address frozen");
+        require(!_frozen[to], "to address frozen");
     }
 
     uint256[50] private __gap;

@@ -9,6 +9,13 @@ import "./FlexibleStake.sol";
  * @dev staking functionality
  */
 contract ERC777_TokenV3 is ERC777_TokenV2, CanStakeFlexible {
+    function setFlexibleStakeRewards(
+        uint256 rewardExpPower,
+        uint256 maxBlocksToCalcReward
+    ) external onlyTreasury {
+        _setFlexibleStakeRewards(rewardExpPower, maxBlocksToCalcReward);
+    }
+
     function flexibleStake(address _delegateTo, uint256 _percentage)
         external
         whenNotPausedOrFrozen
@@ -40,7 +47,7 @@ contract ERC777_TokenV3 is ERC777_TokenV2, CanStakeFlexible {
         return _flexibleStakeBalance();
     }
 
-    function calculateStakeReward()
+    function calculateFlexibleStakeReward()
         external
         view
         whenNotPausedOrFrozen
@@ -50,6 +57,6 @@ contract ERC777_TokenV3 is ERC777_TokenV2, CanStakeFlexible {
             uint256
         )
     {
-        return _calculateStakeReward();
+        return _calculateFlexibleStakeReward();
     }
 }

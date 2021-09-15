@@ -500,7 +500,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 //
                 // Calculate rewards
                 //
-                const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateStakeReward({ from: anyone });
+                const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
                 //console.log(`staking reward for holder: ${reward.toString()}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${rewardDelegatedAmount}`);
                 //
                 // Unstake

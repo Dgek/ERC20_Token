@@ -111,7 +111,7 @@ contract ERC777_UpgradePauseFreeze is
 
     // ASSET PROTECTION DATA
     address public assetProtectionRole;
-    mapping(address => bool) internal frozen;
+    mapping(address => bool) internal _frozen;
 
     // ASSET PROTECTION EVENTS
     event AddressFrozen(address indexed addr);
@@ -139,7 +139,7 @@ contract ERC777_UpgradePauseFreeze is
     /**
      * @dev Check if the account is the initial holder of the tokens
      */
-    function setTreasury(address treasury) internal {
+    function _setTreasury(address treasury) internal {
         require(_treasuryAccount == address(0), "treasury already set");
         _treasuryAccount = treasury;
         assetProtectionRole = treasury;
@@ -233,9 +233,9 @@ contract ERC777_UpgradePauseFreeze is
      */
     function freeze(address _addr) public onlyAssetProtectionRole {
         require(_treasuryAccount != address(0), "freezing zero address");
-        require(_addr != _treasuryAccount, "treasury cannot be frozen");
-        require(!frozen[_addr], "address already frozen");
-        frozen[_addr] = true;
+        require(_addr != _treasuryAccount, "treasury cannot be _frozen");
+        require(!_frozen[_addr], "address already _frozen");
+        _frozen[_addr] = true;
         emit AddressFrozen(_addr);
     }
 
@@ -245,24 +245,24 @@ contract ERC777_UpgradePauseFreeze is
      */
     function unfreeze(address _addr) public onlyAssetProtectionRole {
         require(_treasuryAccount != address(0), "unfreezing zero address");
-        require(frozen[_addr], "address already unfrozen");
-        frozen[_addr] = false;
+        require(_frozen[_addr], "address already unfrozen");
+        _frozen[_addr] = false;
         emit AddressUnfrozen(_addr);
     }
 
     /**
-     * @dev Wipes the balance of a frozen address, burning the tokens
+     * @dev Wipes the balance of a _frozen address, burning the tokens
      * wipe addresses can be done even when the contract is paused.
-     * @param _addr The new frozen address to wipe.
+     * @param _addr The new _frozen address to wipe.
      * @param operatorData aditional info.
      */
     function wipeFrozenAddress(address _addr, bytes memory operatorData)
         public
         onlyAssetProtectionRole
     {
-        require(_treasuryAccount != address(0), "wipe frozen zero address");
-        require(_addr != _treasuryAccount, "treasury cannot be wiped"); // redundant as _treasuryAccount cannot be frozen
-        require(frozen[_addr], "address is not frozen");
+        require(_treasuryAccount != address(0), "wipe _frozen zero address");
+        require(_addr != _treasuryAccount, "treasury cannot be wiped"); // redundant as _treasuryAccount cannot be _frozen
+        require(_frozen[_addr], "address is not _frozen");
         uint256 toBurn = balanceOf(_addr);
         unfreeze(_addr);
         _burn(_addr, toBurn, "", operatorData);
@@ -271,12 +271,12 @@ contract ERC777_UpgradePauseFreeze is
     }
 
     /**
-     * @dev Gets whether the address is currently frozen.
-     * @param _addr The address to check if frozen.
-     * @return A bool representing whether the given address is frozen.
+     * @dev Gets whether the address is currently _frozen.
+     * @param _addr The address to check if _frozen.
+     * @return A bool representing whether the given address is _frozen.
      */
     function isFrozen(address _addr) public view returns (bool) {
-        return frozen[_addr];
+        return _frozen[_addr];
     }
 
     /**
@@ -361,9 +361,6 @@ contract ERC777_UpgradePauseFreeze is
         uint256 amount,
         bytes memory data
     ) public virtual override whenNotPausedOrFrozen {
-        uint256 balanceFrom = _balances[_msgSender()];
-        uint256 balanceTo = _balances[recipient];
-        emit Balance(_msgSender(), recipient, balanceFrom, balanceTo);
         _send(_msgSender(), recipient, amount, data, "", true);
     }
 
@@ -668,10 +665,6 @@ contract ERC777_UpgradePauseFreeze is
 
         emit Minted(operator, account, amount, userData, operatorData);
         emit Transfer(address(0), account, amount);
-
-        uint256 balanceOperator = _balances[operator];
-        uint256 balance0 = _balances[address(0)];
-        emit Balance(operator, address(0), balanceOperator, balance0);
     }
 
     /**
@@ -740,10 +733,8 @@ contract ERC777_UpgradePauseFreeze is
         _beforeTokenTransfer(operator, from, address(0), amount);
 
         // Update state variables
-        uint256 operatorBalance = _balances[operator];
         uint256 fromBalance = _balances[from];
 
-        emit Balance(operator, from, operatorBalance, fromBalance);
         require(fromBalance >= amount, "ERC777: burn amount exceeds balance");
         unchecked {
             _balances[from] = fromBalance - amount;

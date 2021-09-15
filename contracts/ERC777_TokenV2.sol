@@ -21,8 +21,8 @@ contract ERC777_TokenV2 is ERC777_Token {
      */
 
     // INITIALIZATION DATA
-    string private creator;
-    uint8 public constant version = 2; // solium-disable-line uppercase
+    string private _creator;
+    uint8 public constant VERSION = 2; // solium-disable-line uppercase
 
     /**
      * FUNCTIONALITY
@@ -30,18 +30,18 @@ contract ERC777_TokenV2 is ERC777_Token {
 
     /**
      * @dev Gets creators name.
-     * @return A string representing the creator.
+     * @return A string representing the _creator.
      */
     function getCreator() public view returns (string memory) {
-        return creator;
+        return _creator;
     }
 
     // INITIALIZATION FUNCTIONALITY
 
     /**
-     * @dev sets creator's name.
+     * @dev sets _creator's name.
      */
-    function setCreator(string memory _creator) public onlyTreasury {
-        creator = _creator;
+    function setCreator(string memory creator) public onlyTreasury {
+        _creator = creator;
     }
 }

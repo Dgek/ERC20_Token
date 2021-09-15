@@ -19,11 +19,10 @@ module.exports = async function (deployer, network, accounts)
 
     const existing = await TokenV2.deployed();
     const instance = await upgradeProxy(existing.address, TokenV3, { deployer });
-    await instance.setCreator("Alvaro Martin");
+    await instance.setFlexibleStakeRewards(5, 1300000);
 
     console.log(`Contract ${instance.address} upgrade from ${existing.address}`);
-    console.log(await (await instance.version()).toString());
-    console.log(await instance.getCreator());
-    console.log(await (await instance.totalSupply()).toString());
-    console.log(await instance.isTreasury(treasury));
+    console.log(`Creator - v2: ${await instance.getCreator()}`);
+    console.log(`Total Supply - v1: ${await (await instance.totalSupply()).toString()}`);
+    console.log(`Is still treasury - v1: ${await instance.isTreasury(treasury)}`);
 };
