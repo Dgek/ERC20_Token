@@ -18,6 +18,6 @@ module.exports = async function (deployer, network, accounts)
         await singletons.ERC1820Registry(registryFunder); // founder
 
         const instance = await deployProxy(MultiToken, [uri], { deployer, initializer: 'initialize' });
-        console.log("Contract deployed", instance.address);
+        console.log("Contract MultiToken deployed", instance.address);
     }
 };

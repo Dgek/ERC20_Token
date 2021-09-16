@@ -15,10 +15,11 @@ contract CanStakeFlexible {
         uint256 percentage;
     }
     mapping(address => Stake) internal _stakes;
-    uint256 private constant MIN_PERCENTAGE_PER_BLOCK = 1;
-    uint256 private constant MAX_PERCENTAGE_PER_BLOCK = 100;
-    uint256 private _rewardExpPower;
-    uint256 private _maxBlocksToCalcReward; // Kinda 30d in MATIC
+    uint256 private constant _MIN_PERCENTAGE_PER_BLOCK = 1;
+    uint256 private constant _MAX_PERCENTAGE_PER_BLOCK = 100;
+    uint256 private _stakingDifficulty;
+
+    event LogSetFlexibleStakeRewards(uint256 stakingDifficulty);
 
     event LogStake(
         address holder,
@@ -36,15 +37,16 @@ contract CanStakeFlexible {
         uint256 rewardAmountToDelegate
     );
 
-    function _setFlexibleStakeRewards(
-        uint256 rewardExpPower,
-        uint256 maxBlocksToCalcReward
-    ) internal {
-        _rewardExpPower = rewardExpPower;
-        _maxBlocksToCalcReward = maxBlocksToCalcReward;
+    function _setFlexibleStakeDifficulty(uint256 stakingDifficulty) internal {
+        _stakingDifficulty = stakingDifficulty;
+        emit LogSetFlexibleStakeRewards(_stakingDifficulty);
     }
 
-    function _calculateFlexibleStakeReward()
+    function _getFlexibleStakeDifficulty() internal view returns (uint256) {
+        return _stakingDifficulty;
+    }
+
+    function _calculateFlexibleStakeReward(address _account)
         internal
         view
         returns (
@@ -53,42 +55,44 @@ contract CanStakeFlexible {
             uint256
         )
     {
+        require(
+            _stakes[_account].delegateTo != address(0),
+            "You are not staking"
+        );
+
         uint256 currentBlock = block.number;
 
-        uint256 stakedForBlocks = (currentBlock -
-            _stakes[msg.sender].sinceBlock);
-        uint256 percentageToUser = 100 - _stakes[msg.sender].percentage;
-        uint256 percentageToDelegate = 100 - percentageToUser;
+        uint256 stakedForBlocks = (currentBlock - _stakes[_account].sinceBlock);
+        uint256 percentageToDelegate = 100 - _stakes[_account].percentage;
+        uint256 percentageToUser = 100 - percentageToDelegate;
 
-        // log
-        //uint256 range = logMaxPercentPerBlock - logMinPercentPerBlock;
-        //uint256 rewardAmount = (PRBMathUD60x18.log10(stakedForBlocks) -
-        //    logMinPercentPerBlock) / range;
-        // simple
-        //uint256 rewardAmount = (stakedForBlocks * percentPerBlock); Simple
-        // pow
-        uint256 campMaxBlocks = stakedForBlocks > _maxBlocksToCalcReward
-            ? _maxBlocksToCalcReward
-            : stakedForBlocks;
-        uint256 rewardAmount = campMaxBlocks**_rewardExpPower;
+        // https://www.desmos.com/calculator/djcrjdfiif
+        // y=I\cdot\left(\frac{x^{2}}{4\cdot p}\right)
+
+        uint256 ownedTokens = _stakes[_account].amount; // Tokens you have
+        uint256 difficulty = _stakingDifficulty; // Staking difficulty
+
+        uint256 rewardAmount = ownedTokens *
+            ((stakedForBlocks**2) / (4 * difficulty));
 
         uint256 rewardAmountToHolder = rewardAmount / percentageToUser;
         uint256 rewardAmountDelegated = rewardAmount / percentageToDelegate;
 
         return (
             rewardAmountToHolder,
-            _stakes[msg.sender].delegateTo,
+            _stakes[_account].delegateTo,
             rewardAmountDelegated
         );
     }
 
     function _flexibleStake(
+        address _account,
         uint256 _amount,
         address _delegateTo,
         uint256 _percentage
     ) internal {
         require(
-            _stakes[msg.sender].delegateTo == address(0),
+            _stakes[_account].delegateTo == address(0),
             "You are already delegating"
         );
 
@@ -97,28 +101,28 @@ contract CanStakeFlexible {
             "Cannot delegate to the zero address"
         );
         require(
-            _percentage >= MIN_PERCENTAGE_PER_BLOCK,
+            _percentage >= _MIN_PERCENTAGE_PER_BLOCK,
             "Cannot delegate less than 1 percentage"
         );
         require(
-            _percentage <= MAX_PERCENTAGE_PER_BLOCK,
+            _percentage <= _MAX_PERCENTAGE_PER_BLOCK,
             "Cannot delegate more than 100 percentage"
         );
 
-        _stakes[msg.sender] = (
+        _stakes[_account] = (
             Stake(_amount, block.number, _delegateTo, _percentage)
         );
 
         emit LogStake(
-            msg.sender,
-            _stakes[msg.sender].amount,
-            _stakes[msg.sender].sinceBlock,
-            _stakes[msg.sender].delegateTo,
-            _stakes[msg.sender].percentage
+            _account,
+            _stakes[_account].amount,
+            _stakes[_account].sinceBlock,
+            _stakes[_account].delegateTo,
+            _stakes[_account].percentage
         );
     }
 
-    function _flexibleUntake()
+    function _flexibleUntake(address _account)
         internal
         returns (
             uint256,
@@ -126,19 +130,19 @@ contract CanStakeFlexible {
             uint256
         )
     {
-        require(_stakes[msg.sender].sinceBlock != 0, "Nothing to unstake");
+        require(_stakes[_account].sinceBlock != 0, "Nothing to unstake");
 
         (
             uint256 rewardAmountToHolder,
             address rewardToDelegateTo,
             uint256 rewardAmountToDelegate
-        ) = _calculateFlexibleStakeReward();
+        ) = _calculateFlexibleStakeReward(_account);
 
-        _stakes[msg.sender].sinceBlock = block.number;
+        _stakes[_account].sinceBlock = block.number;
 
         emit LogUnstake(
-            msg.sender,
-            _stakes[msg.sender].amount,
+            _account,
+            _stakes[_account].amount,
             rewardAmountToHolder,
             rewardToDelegateTo,
             rewardAmountToDelegate
@@ -151,7 +155,7 @@ contract CanStakeFlexible {
         );
     }
 
-    function _flexibleStakeBalance()
+    function _flexibleStakeBalance(address _account)
         internal
         view
         returns (
@@ -161,9 +165,9 @@ contract CanStakeFlexible {
         )
     {
         return (
-            _stakes[msg.sender].amount,
-            _stakes[msg.sender].delegateTo,
-            _stakes[msg.sender].percentage
+            _stakes[_account].amount,
+            _stakes[_account].delegateTo,
+            _stakes[_account].percentage
         );
     }
 }

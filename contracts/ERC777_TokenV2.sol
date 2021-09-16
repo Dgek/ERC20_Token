@@ -22,7 +22,6 @@ contract ERC777_TokenV2 is ERC777_Token {
 
     // INITIALIZATION DATA
     string private _creator;
-    uint8 public constant VERSION = 2; // solium-disable-line uppercase
 
     /**
      * FUNCTIONALITY

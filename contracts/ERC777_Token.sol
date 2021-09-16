@@ -10,6 +10,7 @@ import "./ERC777_UpgradePauseFreeze.sol";
  */
 contract ERC777_Token is Initializable, ERC777_UpgradePauseFreeze {
     event BeforeTokenTransfer();
+    uint256 private _blockNumberWhenCreated;
 
     function initialize(
         string memory name,
@@ -29,6 +30,14 @@ contract ERC777_Token is Initializable, ERC777_UpgradePauseFreeze {
             data,
             operatorData
         );
+        _blockNumberWhenCreated = block.number;
+    }
+
+    /**
+     * @dev Will return the block number when the contract was created
+     */
+    function getBlockNumberWhenCreated() public view returns (uint256) {
+        return _blockNumberWhenCreated;
     }
 
     /**

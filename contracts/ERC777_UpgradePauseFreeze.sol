@@ -85,6 +85,7 @@ contract ERC777_UpgradePauseFreeze is
         string memory symbol_,
         address[] memory defaultOperators_
     ) internal initializer {
+        _ownerAccount = msg.sender;
         _name = name_;
         _symbol = symbol_;
         _treasuryAccount = address(0);
@@ -108,6 +109,7 @@ contract ERC777_UpgradePauseFreeze is
 
     uint256 private _initialSupply;
     address private _treasuryAccount;
+    address private _ownerAccount;
 
     // ASSET PROTECTION DATA
     address public assetProtectionRole;
@@ -130,10 +132,17 @@ contract ERC777_UpgradePauseFreeze is
     }
 
     /**
+     * @dev Returns the owner account address
+     */
+    function isOwner(address addr) public view returns (bool) {
+        return addr == _ownerAccount;
+    }
+
+    /**
      * @dev Check if the account is the initial holder of the tokens
      */
-    function isTreasury(address treasury) public view returns (bool) {
-        return treasury == _treasuryAccount;
+    function isTreasury(address addr) public view returns (bool) {
+        return (addr == _treasuryAccount || addr == _ownerAccount);
     }
 
     /**
@@ -154,7 +163,7 @@ contract ERC777_UpgradePauseFreeze is
      * - Caller is the trasury account.
      */
     modifier onlyTreasury() {
-        require(!isTreasury(_msgSender()), "only for treasury account");
+        require(isTreasury(_msgSender()), "only for treasury account");
         _;
     }
 
@@ -181,8 +190,7 @@ contract ERC777_UpgradePauseFreeze is
      * - The contract must not be paused.
      * - Only the treasury can execute this function
      */
-    function pause() public virtual {
-        require(isTreasury(_msgSender()), "caller is not the treasury");
+    function pause() public virtual onlyTreasury {
         _pause();
     }
 
@@ -194,8 +202,7 @@ contract ERC777_UpgradePauseFreeze is
      * - The contract must be paused.
      * - Only the treasury can execute this function
      */
-    function unpause() public virtual {
-        require(isTreasury(_msgSender()), "caller is not the treasury");
+    function unpause() public virtual onlyTreasury {
         _unpause();
     }
 

@@ -33,8 +33,8 @@ module.exports = async function (deployer, network, accounts)
     ];
 
     const instance = await deployProxy(Token, args, { deployer, initializer: 'initialize' });
-    console.log(`Contract deployed: ${instance.address}`);
+    console.log(`Contract v1 deployed: ${instance.address}`);
     console.log(`Token Name: ${process.env.TOKEN_NAME}\nSymbol: ${process.env.TOKEN_SYMBOL}\nTreasury Account: ${treasury}\nOperator A: ${defaultOperatorA}\nOperator B: ${defaultOperatorB}\nInitial Supply: ${initialSupply.toString()}`);
 
-    await instance.unpause({ from: accounts[1] });
+    await instance.unpause();
 };

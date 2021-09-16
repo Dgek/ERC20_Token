@@ -8,12 +8,17 @@ import "./FlexibleStake.sol";
  * @title TokenV3
  * @dev staking functionality
  */
+// TODO: configure decay in rewards with getBlockNumberWhenCreated()
 contract ERC777_TokenV3 is ERC777_TokenV2, CanStakeFlexible {
-    function setFlexibleStakeRewards(
-        uint256 rewardExpPower,
-        uint256 maxBlocksToCalcReward
-    ) external onlyTreasury {
-        _setFlexibleStakeRewards(rewardExpPower, maxBlocksToCalcReward);
+    function setFlexibleStakeDifficulty(uint256 stakingDifficulty)
+        external
+        onlyTreasury
+    {
+        _setFlexibleStakeDifficulty(stakingDifficulty);
+    }
+
+    function getFlexibleStakeDifficulty() external view returns (uint256) {
+        return _getFlexibleStakeDifficulty();
     }
 
     function flexibleStake(address _delegateTo, uint256 _percentage)
@@ -21,7 +26,7 @@ contract ERC777_TokenV3 is ERC777_TokenV2, CanStakeFlexible {
         whenNotPausedOrFrozen
     {
         uint256 amount = balanceOf(_msgSender());
-        _flexibleStake(amount, _delegateTo, _percentage);
+        _flexibleStake(_msgSender(), amount, _delegateTo, _percentage);
     }
 
     function flexibleUntake() external whenNotPausedOrFrozen {
@@ -29,7 +34,7 @@ contract ERC777_TokenV3 is ERC777_TokenV2, CanStakeFlexible {
             uint256 rewardToHolder,
             address delegateTo,
             uint256 rewardToDelegate
-        ) = _flexibleUntake();
+        ) = _flexibleUntake(_msgSender());
         _mint(_msgSender(), rewardToHolder, "", "", true);
         _mint(delegateTo, rewardToDelegate, "", "", true);
     }
@@ -44,7 +49,7 @@ contract ERC777_TokenV3 is ERC777_TokenV2, CanStakeFlexible {
             uint256
         )
     {
-        return _flexibleStakeBalance();
+        return _flexibleStakeBalance(_msgSender());
     }
 
     function calculateFlexibleStakeReward()
@@ -57,6 +62,6 @@ contract ERC777_TokenV3 is ERC777_TokenV2, CanStakeFlexible {
             uint256
         )
     {
-        return _calculateFlexibleStakeReward();
+        return _calculateFlexibleStakeReward(_msgSender());
     }
 }
