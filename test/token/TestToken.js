@@ -25,6 +25,8 @@ const testV3 = true;
 const bn0 = new BN("0".repeat(18));
 const bn1 = new BN("1" + "0".repeat(18));
 const bn2 = new BN("2" + "0".repeat(18));
+const tokensToStake = new BN("100000" + "0".repeat(18));
+const stakingDifficulty = new BN("1" + "0".repeat(10));
 
 // Test that Token operates correctly as an ERC20Basic token.
 contract(process.env.TOKEN_NAME, (accounts) =>
@@ -415,9 +417,9 @@ contract(process.env.TOKEN_NAME, (accounts) =>
         {
             it(`set staking difficulty`, async () =>
             {
-                const _stakingDifficulty = new BN(600000000000);
-                await this.token.setFlexibleStakeDifficulty(_stakingDifficulty, { from: treasury });
-                const stakingDifficulty = await this.token.getFlexibleStakeDifficulty({ from: treasury });
+                await this.token.setFlexibleStakeDifficulty(stakingDifficulty, { from: treasury });
+                const _stakingDifficulty = await this.token.getFlexibleStakeDifficulty({ from: treasury });
+                console.log(`Staking Rewards difficulty set to: ${_stakingDifficulty.toString()}`);
 
                 expect(stakingDifficulty).to.be.bignumber.equal(_stakingDifficulty);
             });
@@ -427,9 +429,9 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 //
                 // Toss a coin to anyone
                 //
-                await this.token.operatorMintTo(anyone, bn2, dataInUserTransaction, dataInOperatorTransaction, { from: treasuryOperator });
+                await this.token.operatorMintTo(anyone, tokensToStake, dataInUserTransaction, dataInOperatorTransaction, { from: treasuryOperator });
                 const balanceAnyone = await this.token.balanceOf(anyone, { from: anyone });
-                expect(balanceAnyone).to.be.bignumber.equal(bn2);
+                expect(balanceAnyone).to.be.bignumber.equal(tokensToStake);
             });
 
             it(`cannot flexible stake of 1 delegated at -1%`, async () =>
@@ -459,7 +461,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
 
                 const { 0: amount, 1: delegateTo, 2: percentage } = await this.token.flexibleStakeBalance({ from: anyone });
                 //console.log(`amount: ${amount.toString()}\ndelegateTo: ${delegateTo}\npercentage: ${percentage}`);
-                expect(amount, "amount staked is not equal to bn2").to.be.bignumber.equal(bn2);
+                expect(amount, "amount staked is not equal to tokensToStake").to.be.bignumber.equal(tokensToStake);
                 expect(delegateTo, "delegated address is different").to.be.bignumber.equal(stakeDelegatedTo);
                 expect(percentage, "percentage of delegation is different").to.be.bignumber.equal(new BN(30));
             });
@@ -472,9 +474,10 @@ contract(process.env.TOKEN_NAME, (accounts) =>
 
         describe('time travel...', () =>
         {
-            it("advance some blocks based on MATIC", async () =>
+            it("travel in 1 hour in MATIC", async () =>
             {
-                const blocksToAdvance = 1300000 * 2;    // Forward 2 years
+                const maticBlocksPerDay = 1800;
+                const blocksToAdvance = maticBlocksPerDay;
                 const latest = await time.latestBlock();
                 //console.log(`Current block: ${latest}`);
 
@@ -484,6 +487,75 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 //console.log(`Current block: ${current}`);
 
                 assert.isTrue((current - latest) == blocksToAdvance);
+            });
+
+            it("rewards in 1 hour in MATIC", async () =>
+            {
+                const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
+                console.log(`staking reward for holder: ${reward.toString()}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${rewardDelegatedAmount}`);
+            });
+
+            it("travel in 1 day in MATIC", async () =>
+            {
+                const maticBlocksPerDay = 43200;
+                const blocksToAdvance = maticBlocksPerDay;
+                const latest = await time.latestBlock();
+                //console.log(`Current block: ${latest}`);
+
+                await time.advanceBlockTo(parseInt(latest) + blocksToAdvance);
+
+                const current = await time.latestBlock();
+                //console.log(`Current block: ${current}`);
+
+                assert.isTrue((current - latest) == blocksToAdvance);
+            });
+
+            it("rewards in 1 day in MATIC", async () =>
+            {
+                const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
+                console.log(`staking reward for holder: ${reward.toString()}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${rewardDelegatedAmount}`);
+            });
+
+            it("travel in 7 days in MATIC", async () =>
+            {
+                const maticBlocksPerDay = 43200 * 6;
+                const blocksToAdvance = maticBlocksPerDay;
+                const latest = await time.latestBlock();
+                //console.log(`Current block: ${latest}`);
+
+                await time.advanceBlockTo(parseInt(latest) + blocksToAdvance);
+
+                const current = await time.latestBlock();
+                //console.log(`Current block: ${current}`);
+
+                assert.isTrue((current - latest) == blocksToAdvance);
+            });
+
+            it("rewards in 7 day in MATIC", async () =>
+            {
+                const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
+                console.log(`staking reward for holder: ${reward.toString()}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${rewardDelegatedAmount}`);
+            });
+
+            it("travel in 30 days in MATIC", async () =>
+            {
+                const maticBlocksPerDay = 43200 * 23;
+                const blocksToAdvance = maticBlocksPerDay;
+                const latest = await time.latestBlock();
+                //console.log(`Current block: ${latest}`);
+
+                await time.advanceBlockTo(parseInt(latest) + blocksToAdvance);
+
+                const current = await time.latestBlock();
+                //console.log(`Current block: ${current}`);
+
+                assert.isTrue((current - latest) == blocksToAdvance);
+            });
+
+            it("rewards in 30 day in MATIC", async () =>
+            {
+                const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
+                console.log(`staking reward for holder: ${reward.toString()}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${rewardDelegatedAmount}`);
             });
         });
 
@@ -495,13 +567,13 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 // Double check the balance
                 //
                 const balanceAnyone = await this.token.balanceOf(anyone, { from: anyone });
-                expect(balanceAnyone).to.be.bignumber.equal(bn2);
+                expect(balanceAnyone).to.be.bignumber.equal(tokensToStake);
                 //
                 // Double check the staking balance
                 //
                 const { 0: amount, 1: delegateTo, 2: percentage } = await this.token.flexibleStakeBalance({ from: anyone });
                 //console.log(`amount: ${amount.toString()}\ndelegateTo: ${delegateTo}\npercentage: ${percentage}`);
-                expect(amount, "amount staked is not equal to bn2").to.be.bignumber.equal(bn2);
+                expect(amount, "amount staked is not equal to tokensToStake").to.be.bignumber.equal(tokensToStake);
                 expect(delegateTo, "delegated address is different").to.be.bignumber.equal(stakeDelegatedTo);
                 expect(percentage, "percentage of delegation is different").to.be.bignumber.equal(new BN(30));
             });
@@ -513,7 +585,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 //
                 const balanceHolderOld = await this.token.balanceOf(anyone, { from: anyone });
                 const balanceDelegateOld = await this.token.balanceOf(stakeDelegatedTo, { from: stakeDelegatedTo });
-                expect(balanceHolderOld, `balanceHolderOld: ${balanceHolderOld.toString()} == ${bn2.toString()}`).to.be.bignumber.equal(bn2);
+                expect(balanceHolderOld, `balanceHolderOld: ${balanceHolderOld.toString()} == ${tokensToStake.toString()}`).to.be.bignumber.equal(tokensToStake);
                 expect(balanceDelegateOld, `balanceDelegateOld: ${balanceDelegateOld.toString()} == ${bn0.toString()}`).to.be.bignumber.equal(bn0);
                 //
                 // Calculate rewards
@@ -529,10 +601,10 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 //
                 const balanceHolderNew = await this.token.balanceOf(anyone, { from: anyone });
                 const balanceDelegateNew = await this.token.balanceOf(stakeDelegatedTo, { from: stakeDelegatedTo });
-                const result = bn2.add(reward);
-                console.log(`Balance holder: ${balanceHolderNew.toString()} == ${bn2.toString()} + ${reward.toString()} (${result.toString()})`);
+                const result = tokensToStake.add(reward);
+                console.log(`Balance holder: ${balanceHolderNew.toString()} == ${tokensToStake.toString()} + ${reward.toString()} (${result.toString()})`);
                 console.log(`Balance of delegator: ${balanceDelegateNew.toString()} - rewardDelegatedAmount: ${rewardDelegatedAmount.toString()}`);
-                expect(balanceHolderNew, `balanceHolderNew: ${balanceHolderNew.toString()} == ${bn2.toString()} + ${reward.toString()} (${result.toString()})`).to.be.bignumber.gte(result);
+                expect(balanceHolderNew, `balanceHolderNew: ${balanceHolderNew.toString()} == ${tokensToStake.toString()} + ${reward.toString()} (${result.toString()})`).to.be.bignumber.gte(result);
                 expect(balanceDelegateNew, `balanceDelegateNew should be ${bn0.toString()} + ${rewardDelegatedAmount.toString()}`).to.be.bignumber.gte(rewardDelegatedAmount);
             });
         });

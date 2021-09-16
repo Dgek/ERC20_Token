@@ -69,11 +69,8 @@ contract CanStakeFlexible {
         // https://www.desmos.com/calculator/djcrjdfiif
         // y=I\cdot\left(\frac{x^{2}}{4\cdot p}\right)
 
-        uint256 ownedTokens = _stakes[_account].amount; // Tokens you have
-        uint256 difficulty = _stakingDifficulty; // Staking difficulty
-
-        uint256 rewardAmount = ownedTokens *
-            ((stakedForBlocks**2) / (4 * difficulty));
+        uint256 rewardAmount = _stakes[_account].amount *
+            (stakedForBlocks**2 / _stakingDifficulty);
 
         uint256 rewardAmountToHolder = rewardAmount / percentageToUser;
         uint256 rewardAmountDelegated = rewardAmount / percentageToDelegate;
