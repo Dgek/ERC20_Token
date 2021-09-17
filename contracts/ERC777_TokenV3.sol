@@ -10,14 +10,29 @@ import "./FlexibleStake.sol";
  */
 // TODO: configure decay in rewards with getBlockNumberWhenCreated()
 contract ERC777_TokenV3 is ERC777_TokenV2, CanStakeFlexible {
-    function setFlexibleStakeDifficulty(uint256 stakingDifficulty)
+    function setBlockNumberWhenCreated(uint256 blockNumberWhenCreated)
         external
         onlyTreasury
     {
-        _setFlexibleStakeDifficulty(stakingDifficulty);
+        _setBlockNumberWhenCreated(blockNumberWhenCreated);
     }
 
-    function getFlexibleStakeDifficulty() external view returns (uint256) {
+    function getTotalFlexibleAmountStaked() external view returns (uint256) {
+        return _getTotalFlexibleAmountStaked();
+    }
+
+    function setFlexibleStakeDifficulty(
+        uint256 stakingDifficulty,
+        uint256 halvingBlocksNumber
+    ) external onlyTreasury {
+        _setFlexibleStakeDifficulty(stakingDifficulty, halvingBlocksNumber);
+    }
+
+    function getFlexibleStakeDifficulty()
+        external
+        view
+        returns (uint256, uint256)
+    {
         return _getFlexibleStakeDifficulty();
     }
 

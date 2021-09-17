@@ -22,11 +22,13 @@ const dataInOperatorTransaction = web3.utils.sha3('OZ777TestdataInOperatorTransa
 const testBasics = false;
 const testV1 = false;
 const testV3 = true;
+const testV3Timeout = 9999999999;
 const bn0 = new BN("0".repeat(18));
 const bn1 = new BN("1" + "0".repeat(18));
 const bn2 = new BN("2" + "0".repeat(18));
 const tokensToStake = new BN("100000" + "0".repeat(18));
-const stakingDifficulty = new BN("1" + "0".repeat(10));
+const stakingDifficulty = new BN(43200);
+const halvingBlocksNumber = new BN(43200);
 
 // Test that Token operates correctly as an ERC20Basic token.
 contract(process.env.TOKEN_NAME, (accounts) =>
@@ -77,19 +79,25 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 data: dataInception,
                 operatorData: dataInception
             });
-            /*
-            await expectRevert.unspecified(this.token.unpause({ from: anyone }));
-            await expectRevert.unspecified(this.token.pause({ from: anyone }));
-            await this.token.unpause({ from: treasury });
-            await this.token.pause({ from: treasury });
-            await this.token.unpause({ from: treasury });
-            */
+            //
+            // V1
+            //
             if (await this.token.paused())
             {
                 await this.token.unpause();
                 console.log(`is contract paused? ${await this.token.paused()}`)
             }
             await this.token.authorizeOperator(treasuryOperator, { from: treasury });
+            //
+            // V3
+            //
+            await this.token.setBlockNumberWhenCreated(await this.token.getBlockNumberWhenCreated(), { from: treasury });
+            await this.token.setFlexibleStakeDifficulty(stakingDifficulty, halvingBlocksNumber, { from: treasury });
+
+            const { 0: _stakingDifficulty, 1: _halvingBlocksNumber } = await this.token.getFlexibleStakeDifficulty({ from: treasury });
+            console.log(`Staking Rewards difficulty set to: ${_stakingDifficulty.toString()} with halving at: ${_halvingBlocksNumber.toString()}`);
+
+            expect(stakingDifficulty).to.be.bignumber.equal(_stakingDifficulty);
         }
     });
 
@@ -415,15 +423,6 @@ contract(process.env.TOKEN_NAME, (accounts) =>
     {
         describe('staking functionality', () =>
         {
-            it(`set staking difficulty`, async () =>
-            {
-                await this.token.setFlexibleStakeDifficulty(stakingDifficulty, { from: treasury });
-                const _stakingDifficulty = await this.token.getFlexibleStakeDifficulty({ from: treasury });
-                console.log(`Staking Rewards difficulty set to: ${_stakingDifficulty.toString()}`);
-
-                expect(stakingDifficulty).to.be.bignumber.equal(_stakingDifficulty);
-            });
-
             it(`toss a coin to anyone`, async () =>
             {
                 //
@@ -492,7 +491,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             it("rewards in 1 hour in MATIC", async () =>
             {
                 const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
-                console.log(`staking reward for holder: ${reward.toString()}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${rewardDelegatedAmount}`);
+                console.log(`total rewards: ${reward.add(rewardDelegatedAmount).toString()}\nstaking reward for holder: ${reward.toString()}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${rewardDelegatedAmount.toString()}`);
             });
 
             it("travel in 1 day in MATIC", async () =>
@@ -508,12 +507,12 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 //console.log(`Current block: ${current}`);
 
                 assert.isTrue((current - latest) == blocksToAdvance);
-            });
+            }).timeout(testV3Timeout);
 
             it("rewards in 1 day in MATIC", async () =>
             {
                 const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
-                console.log(`staking reward for holder: ${reward.toString()}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${rewardDelegatedAmount}`);
+                console.log(`total rewards: ${reward.add(rewardDelegatedAmount).toString()}\nstaking reward for holder: ${reward.toString()}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${rewardDelegatedAmount.toString()}`);
             });
 
             it("travel in 7 days in MATIC", async () =>
@@ -529,15 +528,15 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 //console.log(`Current block: ${current}`);
 
                 assert.isTrue((current - latest) == blocksToAdvance);
-            });
+            }).timeout(testV3Timeout);
 
-            it("rewards in 7 day in MATIC", async () =>
+            it("rewards in 7 days in MATIC", async () =>
             {
                 const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
-                console.log(`staking reward for holder: ${reward.toString()}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${rewardDelegatedAmount}`);
+                console.log(`total rewards: ${reward.add(rewardDelegatedAmount).toString()}\nstaking reward for holder: ${reward.toString()}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${rewardDelegatedAmount.toString()}`);
             });
 
-            it("travel in 30 days in MATIC", async () =>
+            it("travel in 30 dayss in MATIC", async () =>
             {
                 const maticBlocksPerDay = 43200 * 23;
                 const blocksToAdvance = maticBlocksPerDay;
@@ -550,12 +549,33 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 //console.log(`Current block: ${current}`);
 
                 assert.isTrue((current - latest) == blocksToAdvance);
-            });
+            }).timeout(testV3Timeout);
 
-            it("rewards in 30 day in MATIC", async () =>
+            it("rewards in 30 days in MATIC", async () =>
             {
                 const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
-                console.log(`staking reward for holder: ${reward.toString()}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${rewardDelegatedAmount}`);
+                console.log(`total rewards: ${reward.add(rewardDelegatedAmount).toString()}\nstaking reward for holder: ${reward.toString()}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${rewardDelegatedAmount.toString()}`);
+            });
+
+            it("travel in 90 days in MATIC", async () =>
+            {
+                const maticBlocksPerDay = 43200 * 60;
+                const blocksToAdvance = maticBlocksPerDay;
+                const latest = await time.latestBlock();
+                //console.log(`Current block: ${latest}`);
+
+                await time.advanceBlockTo(parseInt(latest) + blocksToAdvance);
+
+                const current = await time.latestBlock();
+                //console.log(`Current block: ${current}`);
+
+                assert.isTrue((current - latest) == blocksToAdvance);
+            }).timeout(testV3Timeout);
+
+            it("rewards in 90 days in MATIC", async () =>
+            {
+                const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
+                console.log(`total rewards: ${reward.add(rewardDelegatedAmount).toString()}\nstaking reward for holder: ${reward.toString()}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${rewardDelegatedAmount.toString()}`);
             });
         });
 
@@ -591,7 +611,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 // Calculate rewards
                 //
                 const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
-                console.log(`staking reward for holder: ${reward.toString()}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${rewardDelegatedAmount}`);
+                console.log(`staking reward for holder: ${reward.toString()}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${rewardDelegatedAmount.toString()}`);
                 //
                 // Unstake
                 //

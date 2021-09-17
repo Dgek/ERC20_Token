@@ -17,9 +17,16 @@ contract CanStakeFlexible {
     mapping(address => Stake) internal _stakes;
     uint256 private constant _MIN_PERCENTAGE_PER_BLOCK = 1;
     uint256 private constant _MAX_PERCENTAGE_PER_BLOCK = 100;
+    uint256 private _totalFlexibleAmountStaked;
+    uint256 private _blockNumberWhenCreated;
     uint256 private _stakingDifficulty;
+    uint256 private _halvingBlocksNumber;
 
-    event LogSetFlexibleStakeRewards(uint256 stakingDifficulty);
+    event LogBlockNumberWhenCreated(uint256 blockNumberWhenCreated);
+    event LogSetFlexibleStakeRewards(
+        uint256 stakingDifficulty,
+        uint256 halvingBlocksNumber
+    );
 
     event LogStake(
         address holder,
@@ -37,13 +44,43 @@ contract CanStakeFlexible {
         uint256 rewardAmountToDelegate
     );
 
-    function _setFlexibleStakeDifficulty(uint256 stakingDifficulty) internal {
-        _stakingDifficulty = stakingDifficulty;
-        emit LogSetFlexibleStakeRewards(_stakingDifficulty);
+    function _setBlockNumberWhenCreated(uint256 blockNumberWhenCreated)
+        internal
+    {
+        require(
+            blockNumberWhenCreated != 0,
+            "blockNumberWhenCreated cannot be 0"
+        );
+        _blockNumberWhenCreated = blockNumberWhenCreated;
+        emit LogBlockNumberWhenCreated(_blockNumberWhenCreated);
     }
 
-    function _getFlexibleStakeDifficulty() internal view returns (uint256) {
-        return _stakingDifficulty;
+    function _getTotalFlexibleAmountStaked() internal view returns (uint256) {
+        return _totalFlexibleAmountStaked;
+    }
+
+    function _getBlockNumberWhenCreated() internal view returns (uint256) {
+        return _blockNumberWhenCreated;
+    }
+
+    function _setFlexibleStakeDifficulty(
+        uint256 stakingDifficulty,
+        uint256 halvingBlocksNumber
+    ) internal {
+        _stakingDifficulty = stakingDifficulty;
+        _halvingBlocksNumber = halvingBlocksNumber;
+        emit LogSetFlexibleStakeRewards(
+            _stakingDifficulty,
+            _halvingBlocksNumber
+        );
+    }
+
+    function _getFlexibleStakeDifficulty()
+        internal
+        view
+        returns (uint256, uint256)
+    {
+        return (_stakingDifficulty, _halvingBlocksNumber);
     }
 
     function _calculateFlexibleStakeReward(address _account)
@@ -62,15 +99,19 @@ contract CanStakeFlexible {
 
         uint256 currentBlock = block.number;
 
+        // Reward distribution
         uint256 stakedForBlocks = (currentBlock - _stakes[_account].sinceBlock);
         uint256 percentageToDelegate = 100 - _stakes[_account].percentage;
         uint256 percentageToUser = 100 - percentageToDelegate;
-
-        // https://www.desmos.com/calculator/djcrjdfiif
-        // y=I\cdot\left(\frac{x^{2}}{4\cdot p}\right)
-
-        uint256 rewardAmount = _stakes[_account].amount *
-            (stakedForBlocks**2 / _stakingDifficulty);
+        //
+        // Simple cycle: y=\left(\frac{T}{p}\right)\cdot x
+        //
+        uint256 rewardAmount = (_stakes[_account].amount / _stakingDifficulty) *
+            stakedForBlocks;
+        //
+        // You need to stake more and more to be close to the ratio: y=x^{\frac{T}{p}}
+        //
+        //uint256 rewardAmount = stakedForBlocks**(_stakes[_account].amount / _stakingDifficulty);
 
         uint256 rewardAmountToHolder = rewardAmount / percentageToUser;
         uint256 rewardAmountDelegated = rewardAmount / percentageToDelegate;
@@ -92,7 +133,6 @@ contract CanStakeFlexible {
             _stakes[_account].delegateTo == address(0),
             "You are already delegating"
         );
-
         require(
             _delegateTo != address(0),
             "Cannot delegate to the zero address"
@@ -109,6 +149,7 @@ contract CanStakeFlexible {
         _stakes[_account] = (
             Stake(_amount, block.number, _delegateTo, _percentage)
         );
+        _totalFlexibleAmountStaked += _amount;
 
         emit LogStake(
             _account,
@@ -117,6 +158,19 @@ contract CanStakeFlexible {
             _stakes[_account].delegateTo,
             _stakes[_account].percentage
         );
+    }
+
+    function _calculateFlexibleHalving() internal {
+        //
+        // Calculate halving reward multiplier
+        //
+        bool needsToHalf = block.number > _blockNumberWhenCreated**2
+            ? true
+            : false;
+        if (needsToHalf) {
+            _stakingDifficulty**2;
+            _blockNumberWhenCreated = block.number;
+        }
     }
 
     function _flexibleUntake(address _account)
@@ -128,6 +182,7 @@ contract CanStakeFlexible {
         )
     {
         require(_stakes[_account].sinceBlock != 0, "Nothing to unstake");
+        _calculateFlexibleHalving();
 
         (
             uint256 rewardAmountToHolder,
@@ -144,6 +199,8 @@ contract CanStakeFlexible {
             rewardToDelegateTo,
             rewardAmountToDelegate
         );
+        _totalFlexibleAmountStaked -= rewardAmountToHolder;
+        _totalFlexibleAmountStaked -= rewardAmountToDelegate;
 
         return (
             rewardAmountToHolder,
