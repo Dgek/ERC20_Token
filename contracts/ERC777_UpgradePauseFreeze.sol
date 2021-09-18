@@ -148,6 +148,13 @@ contract ERC777_UpgradePauseFreeze is
     /**
      * @dev Check if the account is the initial holder of the tokens
      */
+    function _getTreasury() internal view returns (address) {
+        return _treasuryAccount;
+    }
+
+    /**
+     * @dev Check if the account is the initial holder of the tokens
+     */
     function _setTreasury(address treasury) internal {
         require(_treasuryAccount == address(0), "treasury already set");
         _treasuryAccount = treasury;

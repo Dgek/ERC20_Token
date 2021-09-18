@@ -6,8 +6,9 @@ const { expect } = require('chai');
 const TokenV2 = artifacts.require('ERC777_TokenV2');
 const TokenV3 = artifacts.require('ERC777_TokenV3');
 
-const stakingDifficulty = new BN(43200);
-const halvingBlocksNumber = new BN(43200);
+const BLOCKS_PER_DAY = process.env.MATIC_BLOCKS_PER_DAY;
+const stakingDifficulty = new BN(BLOCKS_PER_DAY);
+const halvingBlocksNumber = new BN(BLOCKS_PER_DAY);
 module.exports = async function (deployer, network, accounts)
 {
     const [registryFunder, treasury, defaultOperatorA, defaultOperatorB] = accounts;

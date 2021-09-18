@@ -213,14 +213,9 @@ const shouldBehaveLikeERC777UnauthorizedOperatorBurn = (token, holder, operator,
 {
     describe(`unauthorized operator burn for holder ${holder}`, () =>
     {
-        it('reverts burn 0', async () =>
+        it(`reverts burn 0 with caller ${operator}`, async () =>
         {
-            await expectRevert.unspecified(token.operatorBurn(holder, new BN('0'), data, operatorData));
-        });
-
-        it('reverts burn 1', async () =>
-        {
-            await expectRevert.unspecified(token.operatorBurn(holder, new BN('1'), data, operatorData));
+            await expectRevert.unspecified(token.operatorBurn(holder, new BN('0'), data, operatorData, { from: operator }));
         });
 
         it(`reverts burn 1 with caller ${operator}`, async () =>
@@ -234,14 +229,9 @@ const shouldBehaveLikeERC777UnauthorizedOperatorMint = (token, holder, operator,
 {
     describe(`unauthorized operator mint for holder ${holder}`, () =>
     {
-        it('reverts mint 0', async () =>
+        it(`reverts mint 0 with caller ${operator}`, async () =>
         {
-            await expectRevert.unspecified(token.treasuryMint(new BN('0'), data, operatorData));
-        });
-
-        it('reverts mint 1', async () =>
-        {
-            await expectRevert.unspecified(token.treasuryMint(new BN('1'), data, operatorData));
+            await expectRevert.unspecified(token.treasuryMint(new BN('0'), data, operatorData, { from: operator }));
         });
 
         it(`reverts mint 1 with caller ${operator}`, async () =>

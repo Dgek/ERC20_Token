@@ -94,7 +94,7 @@ contract ERC777_Token is Initializable, ERC777_UpgradePauseFreeze {
     ) public whenNotPausedOrFrozen {
         require(isTreasury(_msgSender()), "ERC777: caller is not the treasury");
         require(!paused(), "contract paused");
-        _mint(_msgSender(), amount, userData, operatorData, true);
+        _mint(_getTreasury(), amount, userData, operatorData, true);
     }
 
     /**

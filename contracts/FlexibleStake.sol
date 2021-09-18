@@ -190,8 +190,6 @@ contract CanStakeFlexible {
             uint256 rewardAmountToDelegate
         ) = _calculateFlexibleStakeReward(_account);
 
-        _stakes[_account].sinceBlock = block.number;
-
         emit LogUnstake(
             _account,
             _stakes[_account].amount,
@@ -201,6 +199,8 @@ contract CanStakeFlexible {
         );
         _totalFlexibleAmountStaked -= rewardAmountToHolder;
         _totalFlexibleAmountStaked -= rewardAmountToDelegate;
+
+        delete _stakes[_account];
 
         return (
             rewardAmountToHolder,
