@@ -582,16 +582,14 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 console.log(`total rewards: ${prettyReward(reward.add(rewardDelegatedAmount))}\nstaking reward for holder: ${prettyReward(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyReward(rewardDelegatedAmount)}`);
             });
 
-            it("unstake & stake after 1 year", async () =>
+            it("unstake & burn rewards & stake after 1 year", async () =>
             {
                 //
                 // Unstake
                 //
-                const { logs } = await this.token.flexibleUntake({ from: anyone });
-                console.log(logs);
+                await this.token.flexibleUntake({ from: anyone });
                 const currentBalance = await this.token.balanceOf(anyone);
-                console.log(`current balance: ${prettyReward(currentBalance)}`);
-
+                //console.log(`current balance: ${prettyReward(currentBalance)}`);
                 //
                 // Burn to test the 2nd year profitability
                 //            

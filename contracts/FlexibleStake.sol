@@ -129,6 +129,7 @@ contract CanStakeFlexible {
         address _delegateTo,
         uint256 _percentage
     ) internal {
+        require(_amount != 0, "amount to stake > 0");
         require(
             _stakes[_account].delegateTo == address(0),
             "You are already delegating"
@@ -145,10 +146,12 @@ contract CanStakeFlexible {
             _percentage <= _MAX_PERCENTAGE_PER_BLOCK,
             "Cannot delegate more than 100 percentage"
         );
+        require(block.number != 0, "too fast too furious");
 
         _stakes[_account] = (
             Stake(_amount, block.number, _delegateTo, _percentage)
         );
+
         _totalFlexibleAmountStaked += _amount;
 
         emit LogStake(
@@ -181,7 +184,8 @@ contract CanStakeFlexible {
             uint256
         )
     {
-        require(_stakes[_account].sinceBlock != 0, "Nothing to unstake");
+        require(_stakes[_account].sinceBlock != 0, "nothing to unstake");
+
         _calculateFlexibleHalving();
 
         (
@@ -197,8 +201,8 @@ contract CanStakeFlexible {
             rewardToDelegateTo,
             rewardAmountToDelegate
         );
-        _totalFlexibleAmountStaked -= rewardAmountToHolder;
-        _totalFlexibleAmountStaked -= rewardAmountToDelegate;
+
+        _totalFlexibleAmountStaked -= _stakes[_account].amount;
 
         delete _stakes[_account];
 
