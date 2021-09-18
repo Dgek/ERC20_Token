@@ -8,24 +8,18 @@ import "./FlexibleStake.sol";
  * @title TokenV3
  * @dev staking functionality
  */
-// TODO: configure decay in rewards with getBlockNumberWhenCreated()
+// TODO: configure decay in rewards with getReferenceBlockNumber()
 contract ERC777_TokenV3 is ERC777_TokenV2, CanStakeFlexible {
-    function setBlockNumberWhenCreated(uint256 blockNumberWhenCreated)
-        external
-        onlyTreasury
-    {
-        _setBlockNumberWhenCreated(blockNumberWhenCreated);
-    }
-
     function getTotalFlexibleAmountStaked() external view returns (uint256) {
         return _getTotalFlexibleAmountStaked();
     }
 
-    function setFlexibleStakeDifficulty(
+    function initializeFlexibleStaking(
         uint256 stakingDifficulty,
         uint256 halvingBlocksNumber
     ) external onlyTreasury {
         _setFlexibleStakeDifficulty(stakingDifficulty, halvingBlocksNumber);
+        _setupFlexibleStaking(getReferenceBlockNumber());
     }
 
     function getFlexibleStakeDifficulty()
@@ -40,6 +34,7 @@ contract ERC777_TokenV3 is ERC777_TokenV2, CanStakeFlexible {
         external
         whenNotPausedOrFrozen
     {
+        require(totalSupply() < maxSupply(), "there's no more coins to mint");
         uint256 amount = balanceOf(_msgSender());
         _flexibleStake(_msgSender(), amount, _delegateTo, _percentage);
     }
@@ -50,8 +45,20 @@ contract ERC777_TokenV3 is ERC777_TokenV2, CanStakeFlexible {
             address delegateTo,
             uint256 rewardToDelegate
         ) = _flexibleUntake(_msgSender());
-        _mint(_msgSender(), rewardToHolder, "", "", true);
-        _mint(delegateTo, rewardToDelegate, "", "", true);
+        //
+        // If there are no more coins to mint give the rest of the reward to the holder and 0 delegated
+        //
+        uint256 totalSupplyAndRewards = totalSupply() +
+            (rewardToHolder + rewardToDelegate);
+        (
+            uint256 capRewardToHolder,
+            uint256 capRewardToDelegate
+        ) = totalSupplyAndRewards > maxSupply()
+                ? (totalSupplyAndRewards - maxSupply(), 0)
+                : (rewardToHolder, rewardToDelegate);
+
+        _mint(_msgSender(), capRewardToHolder, "", "", true);
+        _mint(delegateTo, capRewardToDelegate, "", "", true);
     }
 
     function flexibleStakeBalance()

@@ -13,25 +13,27 @@ const {
 } = require('./ERC777.behavior');
 
 const initialSupply = new BN(process.env.TOKEN_INITIAL_SUPPLY);
-console.log(process.env.TOKEN_NAME, process.env.TOKEN_SYMBOL, initialSupply.toString());
+const maxSupply = new BN(process.env.TOKEN_MAX_SUPPLY);
 
 const dataInception = web3.utils.sha3('inception');
 const dataInUserTransaction = web3.utils.sha3('OZ777TestdataInUserTransaction');
 const dataInOperatorTransaction = web3.utils.sha3('OZ777TestdataInOperatorTransaction');
 
-const testBasics = true;
-const testV1 = true;
+const hasToPrintBasicInfo = false;
+const testV1 = false;
 const testV3 = true;
 const bn0 = new BN("0".repeat(18));
 const bn1 = new BN("1" + "0".repeat(18));
 const bn2 = new BN("2" + "0".repeat(18));
 const tokensToStake = new BN("1000000" + "0".repeat(18));
+const percentageToDelegate = new BN(30);
 //
 // Simulating
+// With staking difficulty in 240 gives with 1 million tokens: 1 540 404 rewards in the first year, 72420 in the second year
 //
 const BLOCKS_PER_DAY = 1;   // 1d is 1y
-const halvingBlocksNumber = new BN(BLOCKS_PER_DAY * 365);     // Pretended when to do halvings
-const stakingDifficulty = new BN(240);                     // Pretended initial difficulty
+const halvingBlocksNumber = new BN(BLOCKS_PER_DAY * 365);       // Pretended when to do halvings
+const stakingDifficulty = new BN(240);                          // Pretended initial difficulty
 
 const prettyReward = (bn) =>
 {
@@ -50,6 +52,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
         symbol: process.env.TOKEN_SYMBOL,
         defaultOperators: [defaultOperatorA, defaultOperatorB],
         initialSupply: initialSupply,
+        maxSupply: maxSupply,
         treasury: treasury,
         data: dataInception,
         operationData: dataInception
@@ -73,14 +76,14 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             //
             // TODO: do all deployments and updates to test
             //
-            this.token = await deployProxy(Token, [tokenArgs.name, tokenArgs.symbol, tokenArgs.defaultOperators, tokenArgs.initialSupply, tokenArgs.treasury, tokenArgs.data, tokenArgs.operationData], { treasury, initializer: 'initialize' });
+            this.token = await deployProxy(Token, [tokenArgs.name, tokenArgs.symbol, tokenArgs.defaultOperators, tokenArgs.initialSupply, tokenArgs.maxSupply, tokenArgs.treasury, tokenArgs.data, tokenArgs.operationData], { treasury, initializer: 'initialize' });
         }
         else
         {
             this.token = await Token.new({ from: registryFunder });
 
             let logs;
-            ({ logs } = await this.token.initialize(tokenArgs.name, tokenArgs.symbol, tokenArgs.defaultOperators, tokenArgs.initialSupply.toString(), tokenArgs.treasury, tokenArgs.data, tokenArgs.operationData));
+            ({ logs } = await this.token.initialize(tokenArgs.name, tokenArgs.symbol, tokenArgs.defaultOperators, tokenArgs.initialSupply, tokenArgs.maxSupply, tokenArgs.treasury, tokenArgs.data, tokenArgs.operationData));
 
             expectEvent.inLogs(logs, 'Minted', {
                 operator: registryFunder,
@@ -101,8 +104,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             //
             // V3
             //
-            await this.token.setBlockNumberWhenCreated(await this.token.getBlockNumberWhenCreated(), { from: treasury });
-            await this.token.setFlexibleStakeDifficulty(stakingDifficulty, halvingBlocksNumber, { from: treasury });
+            await this.token.initializeFlexibleStaking(stakingDifficulty, halvingBlocksNumber, { from: treasury });
 
             const { 0: _stakingDifficulty, 1: _halvingBlocksNumber } = await this.token.getFlexibleStakeDifficulty({ from: treasury });
             console.log(`Staking Rewards difficulty set to: ${_stakingDifficulty.toString()} with halving at: ${_halvingBlocksNumber.toString()}`);
@@ -111,10 +113,11 @@ contract(process.env.TOKEN_NAME, (accounts) =>
         }
     });
 
-    if (testBasics)
+    if (hasToPrintBasicInfo)
     {
         it(`symbol ${tokenArgs.symbol}`, () => { });
         it(`initialSupply ${tokenArgs.initialSupply.toString()}`, () => { });
+        it(`initialSupply ${tokenArgs.maxSupply.toString()}`, () => { });
         it(`registryFunder ${registryFunder}`, () => { });
         it(`treasury ${tokenArgs.treasury}`, () => { });
         it(`first operator ${tokenArgs.defaultOperators[0]}`, () => { });
@@ -161,6 +164,11 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             it('returns the total supply', async () =>
             {
                 expect(await this.token.totalSupply()).to.be.bignumber.equal(initialSupply);
+            });
+
+            it('returns the max supply', async () =>
+            {
+                expect(await this.token.maxSupply()).to.be.bignumber.equal(maxSupply);
             });
 
             it('returns 18 when decimals is called', async () =>
@@ -460,23 +468,23 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 await expectRevert.unspecified(this.token.flexibleStake(stakeDelegatedTo, 101, { from: anyone }));
             });
 
-            it(`flexible stake delegated at 1%`, async () =>
+            it(`flexible stake delegated at ${percentageToDelegate}%`, async () =>
             {
                 //
                 // Stake all coins
                 //
-                await this.token.flexibleStake(stakeDelegatedTo, new BN(1), { from: anyone });
+                await this.token.flexibleStake(stakeDelegatedTo, percentageToDelegate, { from: anyone });
 
                 const { 0: amount, 1: delegateTo, 2: percentage } = await this.token.flexibleStakeBalance({ from: anyone });
-                //console.log(`amount: ${amount.toString()}\ndelegateTo: ${delegateTo}\npercentage: ${percentage}`);
+                console.log(`amount: ${amount.toString()}\ndelegateTo: ${delegateTo}\npercentage: ${percentage}`);
                 expect(amount, "amount staked is not equal to tokensToStake").to.be.bignumber.equal(tokensToStake);
                 expect(delegateTo, "delegated address is different").to.be.bignumber.equal(stakeDelegatedTo);
-                expect(percentage, "percentage of delegation is different").to.be.bignumber.equal(new BN(1));
+                expect(percentage, "percentage of delegation is different").to.be.bignumber.equal(percentageToDelegate);
             });
 
             it(`cannot delegate to another address before unstake`, async () =>
             {
-                await expectRevert.unspecified(this.token.flexibleStake(stakeDelegatedTo, new BN(1), { from: anyone }));
+                await expectRevert.unspecified(this.token.flexibleStake(stakeDelegatedTo, percentageToDelegate, { from: anyone }));
             });
         });
 
@@ -637,7 +645,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 //console.log(`amount: ${amount.toString()}\ndelegateTo: ${delegateTo}\npercentage: ${percentage}`);
                 expect(amount, "amount staked is not equal to tokensToStake").to.be.bignumber.equal(tokensToStake);
                 expect(delegateTo, "delegated address is different").to.be.bignumber.equal(stakeDelegatedTo);
-                expect(percentage, "percentage of delegation is different").to.be.bignumber.equal(new BN(1));
+                expect(percentage, "percentage of delegation is different").to.be.bignumber.equal(percentageToDelegate);
             });
 
             it(`returns anyone ${anyone} += rewards`, async () =>

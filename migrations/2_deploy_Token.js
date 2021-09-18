@@ -21,12 +21,14 @@ module.exports = async function (deployer, network, accounts)
     {
     }
     const initialSupply = new web3.utils.BN(process.env.TOKEN_INITIAL_SUPPLY);
+    const maxSupply = new web3.utils.BN(process.env.TOKEN_MAX_SUPPLY);
 
     const args = [
         process.env.TOKEN_NAME,
         process.env.TOKEN_SYMBOL,
         [defaultOperatorA, defaultOperatorB], // operators
         initialSupply,
+        maxSupply,
         treasury, // treasury
         dataInception,
         dataInception
@@ -34,7 +36,7 @@ module.exports = async function (deployer, network, accounts)
 
     const instance = await deployProxy(Token, args, { deployer, initializer: 'initialize' });
     console.log(`Contract v1 deployed: ${instance.address}`);
-    console.log(`Token Name: ${process.env.TOKEN_NAME}\nSymbol: ${process.env.TOKEN_SYMBOL}\nTreasury Account: ${treasury}\nOperator A: ${defaultOperatorA}\nOperator B: ${defaultOperatorB}\nInitial Supply: ${initialSupply.toString()}`);
+    console.log(`Token Name: ${process.env.TOKEN_NAME}\nSymbol: ${process.env.TOKEN_SYMBOL}\nTreasury Account: ${treasury}\nOperator A: ${defaultOperatorA}\nOperator B: ${defaultOperatorB}\nInitial Supply: ${initialSupply.toString()}\nMax Supply: ${maxSupply.toString()}`);
 
     await instance.unpause();
 };

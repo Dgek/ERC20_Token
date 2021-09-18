@@ -45,6 +45,7 @@ contract ERC777_UpgradePauseFreeze is
     mapping(address => uint256) private _balances;
 
     uint256 private _totalSupply;
+    uint256 private _maxSupply;
 
     string private _name;
     string private _symbol;
@@ -74,20 +75,23 @@ contract ERC777_UpgradePauseFreeze is
     function __ERC777_init(
         string memory name_,
         string memory symbol_,
-        address[] memory defaultOperators_
+        address[] memory defaultOperators_,
+        uint256 maxSupply_
     ) internal initializer {
         __Context_init_unchained();
-        __ERC777_init_unchained(name_, symbol_, defaultOperators_);
+        __ERC777_init_unchained(name_, symbol_, defaultOperators_, maxSupply_);
     }
 
     function __ERC777_init_unchained(
         string memory name_,
         string memory symbol_,
-        address[] memory defaultOperators_
+        address[] memory defaultOperators_,
+        uint256 maxSupply_
     ) internal initializer {
         _ownerAccount = msg.sender;
         _name = name_;
         _symbol = symbol_;
+        _maxSupply = maxSupply_;
         _treasuryAccount = address(0);
         _defaultOperatorsArray = defaultOperators_;
         for (uint256 i = 0; i < defaultOperators_.length; i++) {
@@ -105,6 +109,13 @@ contract ERC777_UpgradePauseFreeze is
             keccak256("ERC20Token"),
             address(this)
         );
+    }
+
+    /**
+     * @dev Returns the cap on the token's total supply.
+     */
+    function maxSupply() public view virtual returns (uint256) {
+        return _maxSupply;
     }
 
     uint256 private _initialSupply;
@@ -658,6 +669,10 @@ contract ERC777_UpgradePauseFreeze is
         bool requireReceptionAck
     ) internal virtual {
         require(account != address(0), "ERC777: mint to the zero address");
+        require(
+            _totalSupply + amount <= _maxSupply,
+            "Maximum capacity of the token exceeded"
+        );
 
         address operator = _msgSender();
 

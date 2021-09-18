@@ -10,13 +10,14 @@ import "./ERC777_UpgradePauseFreeze.sol";
  */
 contract ERC777_Token is Initializable, ERC777_UpgradePauseFreeze {
     event BeforeTokenTransfer();
-    uint256 private _blockNumberWhenCreated;
+    uint256 private _referenceBlockNumber;
 
     function initialize(
         string memory name,
         string memory symbol,
         address[] memory defaultOperators,
-        uint256 creationSupply,
+        uint256 initialSupply,
+        uint256 maxSupply,
         address treasury,
         bytes memory data,
         bytes memory operatorData
@@ -25,23 +26,26 @@ contract ERC777_Token is Initializable, ERC777_UpgradePauseFreeze {
             name,
             symbol,
             defaultOperators,
-            creationSupply,
+            initialSupply,
+            maxSupply,
             treasury,
             data,
             operatorData
         );
-        _blockNumberWhenCreated = block.number;
+        require(initialSupply > 0, "initialSupply cannot be 0");
+        require(maxSupply > 0, "maximum supply cannot be 0");
+        _referenceBlockNumber = block.number;
     }
 
     /**
      * @dev Will return the block number when the contract was created
      */
-    function getBlockNumberWhenCreated() public view returns (uint256) {
-        return _blockNumberWhenCreated;
+    function getReferenceBlockNumber() public view returns (uint256) {
+        return _referenceBlockNumber;
     }
 
     /**
-     * @dev Mints `creationSupply` amount of token and transfers them to `treasury`.
+     * @dev Mints `initialSupply` amount of token and transfers them to `treasury`.
      *
      * See {ERC777-constructor}.
      */
@@ -49,24 +53,25 @@ contract ERC777_Token is Initializable, ERC777_UpgradePauseFreeze {
         string memory name,
         string memory symbol,
         address[] memory defaultOperators,
-        uint256 creationSupply,
+        uint256 initialSupply,
+        uint256 maxSupply,
         address treasury,
         bytes memory data,
         bytes memory operatorData
     ) internal initializer {
         __Context_init_unchained();
-        __ERC777_init_unchained(name, symbol, defaultOperators);
-        __Token_init_unchained(creationSupply, treasury, data, operatorData);
+        __ERC777_init_unchained(name, symbol, defaultOperators, maxSupply);
+        __Token_init_unchained(initialSupply, treasury, data, operatorData);
         _pause();
     }
 
     function __Token_init_unchained(
-        uint256 creationSupply,
+        uint256 initialSupply,
         address treasury,
         bytes memory data,
         bytes memory operatorData
     ) internal initializer {
-        _mint(treasury, creationSupply, data, operatorData);
+        _mint(treasury, initialSupply, data, operatorData);
         _setTreasury(treasury);
     }
 

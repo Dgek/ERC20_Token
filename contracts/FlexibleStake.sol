@@ -18,11 +18,11 @@ contract CanStakeFlexible {
     uint256 private constant _MIN_PERCENTAGE_PER_BLOCK = 1;
     uint256 private constant _MAX_PERCENTAGE_PER_BLOCK = 100;
     uint256 private _totalFlexibleAmountStaked;
-    uint256 private _blockNumberWhenCreated;
+    uint256 private _referenceBlockNumber;
     uint256 private _stakingDifficulty;
     uint256 private _halvingBlocksNumber;
 
-    event LogBlockNumberWhenCreated(uint256 blockNumberWhenCreated);
+    event LogBlockNumberWhenCreated(uint256 referenceBlockNumber);
     event LogSetFlexibleStakeRewards(
         uint256 stakingDifficulty,
         uint256 halvingBlocksNumber
@@ -44,23 +44,18 @@ contract CanStakeFlexible {
         uint256 rewardAmountToDelegate
     );
 
-    function _setBlockNumberWhenCreated(uint256 blockNumberWhenCreated)
-        internal
-    {
-        require(
-            blockNumberWhenCreated != 0,
-            "blockNumberWhenCreated cannot be 0"
-        );
-        _blockNumberWhenCreated = blockNumberWhenCreated;
-        emit LogBlockNumberWhenCreated(_blockNumberWhenCreated);
+    function _setupFlexibleStaking(uint256 referenceBlockNumber) internal {
+        require(referenceBlockNumber != 0, "referenceBlockNumber cannot be 0");
+        _referenceBlockNumber = referenceBlockNumber;
+        emit LogBlockNumberWhenCreated(_referenceBlockNumber);
     }
 
     function _getTotalFlexibleAmountStaked() internal view returns (uint256) {
         return _totalFlexibleAmountStaked;
     }
 
-    function _getBlockNumberWhenCreated() internal view returns (uint256) {
-        return _blockNumberWhenCreated;
+    function _getReferenceBlockNumber() internal view returns (uint256) {
+        return _referenceBlockNumber;
     }
 
     function _setFlexibleStakeDifficulty(
@@ -167,12 +162,12 @@ contract CanStakeFlexible {
         //
         // Calculate halving reward multiplier
         //
-        bool needsToHalf = block.number > _blockNumberWhenCreated**2
+        bool needsToHalf = block.number > _referenceBlockNumber**2
             ? true
             : false;
         if (needsToHalf) {
             _stakingDifficulty**2;
-            _blockNumberWhenCreated = block.number;
+            _referenceBlockNumber = block.number;
         }
     }
 
