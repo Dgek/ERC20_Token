@@ -19,8 +19,8 @@ const dataInception = web3.utils.sha3('inception');
 const dataInUserTransaction = web3.utils.sha3('OZ777TestdataInUserTransaction');
 const dataInOperatorTransaction = web3.utils.sha3('OZ777TestdataInOperatorTransaction');
 
-const hasToPrintBasicInfo = false;
-const testV1 = false;
+const hasToPrintBasicInfo = true;
+const testV1 = true;    // TODO: test max supply + staking rewards
 const testV3 = true;
 const bn0 = new BN("0".repeat(18));
 const bn1 = new BN("1" + "0".repeat(18));
@@ -631,32 +631,8 @@ contract(process.env.TOKEN_NAME, (accounts) =>
 
         describe('check my staking rewards', () =>
         {
-            it(`returns anyone ${anyone} unstaked rewards`, async () =>
+            it(`returns anyone ${anyone} balance += rewards`, async () =>
             {
-                //
-                // Double check the balance
-                //
-                const balanceAnyone = await this.token.balanceOf(anyone, { from: anyone });
-                expect(balanceAnyone).to.be.bignumber.equal(tokensToStake);
-                //
-                // Double check the staking balance
-                //
-                const { 0: amount, 1: delegateTo, 2: percentage } = await this.token.flexibleStakeBalance({ from: anyone });
-                //console.log(`amount: ${amount.toString()}\ndelegateTo: ${delegateTo}\npercentage: ${percentage}`);
-                expect(amount, "amount staked is not equal to tokensToStake").to.be.bignumber.equal(tokensToStake);
-                expect(delegateTo, "delegated address is different").to.be.bignumber.equal(stakeDelegatedTo);
-                expect(percentage, "percentage of delegation is different").to.be.bignumber.equal(percentageToDelegate);
-            });
-
-            it(`returns anyone ${anyone} += rewards`, async () =>
-            {
-                //
-                // Check balances before unstake
-                //
-                const balanceHolderOld = await this.token.balanceOf(anyone, { from: anyone });
-                const balanceDelegateOld = await this.token.balanceOf(stakeDelegatedTo, { from: stakeDelegatedTo });
-                expect(balanceHolderOld, `balanceHolderOld: ${balanceHolderOld.toString()} == ${tokensToStake.toString()}`).to.be.bignumber.equal(tokensToStake);
-                expect(balanceDelegateOld, `balanceDelegateOld: ${balanceDelegateOld.toString()} == ${bn0.toString()}`).to.be.bignumber.equal(bn0);
                 //
                 // Calculate rewards
                 //
