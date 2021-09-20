@@ -54,11 +54,14 @@ contract ERC777_TokenV3 is ERC777_TokenV2, CanStakeFlexible {
             uint256 capRewardToHolder,
             uint256 capRewardToDelegate
         ) = totalSupplyAndRewards > maxSupply()
-                ? (totalSupplyAndRewards - maxSupply(), 0)
+                ? (maxSupply() - totalSupply(), 0)
                 : (rewardToHolder, rewardToDelegate);
 
-        _mint(_msgSender(), capRewardToHolder, "", "", true);
-        _mint(delegateTo, capRewardToDelegate, "", "", true);
+        if (capRewardToHolder > 0)
+            _mint(_msgSender(), capRewardToHolder, "", "", true);
+
+        if (capRewardToDelegate > 0)
+            _mint(delegateTo, capRewardToDelegate, "", "", true);
     }
 
     function flexibleStakeBalance()

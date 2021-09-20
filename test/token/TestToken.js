@@ -20,8 +20,10 @@ const dataInUserTransaction = web3.utils.sha3('OZ777TestdataInUserTransaction');
 const dataInOperatorTransaction = web3.utils.sha3('OZ777TestdataInOperatorTransaction');
 
 const hasToPrintBasicInfo = true;
-const testV1 = true;    // TODO: test max supply + staking rewards
+const testV1 = true;
 const testV3 = true;
+const hasToTestMaxSupply = true;
+
 const bn0 = new BN("0".repeat(18));
 const bn1 = new BN("1" + "0".repeat(18));
 const bn2 = new BN("2" + "0".repeat(18));
@@ -35,11 +37,11 @@ const BLOCKS_PER_DAY = 1;   // 1d is 1y
 const halvingBlocksNumber = new BN(BLOCKS_PER_DAY * 365);       // Pretended when to do halvings
 const stakingDifficulty = new BN(240);                          // Pretended initial difficulty
 
-const prettyReward = (bn) =>
+const prettyBn = (bn) =>
 {
     let str = bn.toString();
 
-    return str.length >= 18 ? str.substr(0, str.length - 18) : "0";
+    return (str.length >= 18 ? str.substr(0, str.length - 18) : "0").replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",");
 }
 
 // Test that Token operates correctly as an ERC20Basic token.
@@ -476,7 +478,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 await this.token.flexibleStake(stakeDelegatedTo, percentageToDelegate, { from: anyone });
 
                 const { 0: amount, 1: delegateTo, 2: percentage } = await this.token.flexibleStakeBalance({ from: anyone });
-                console.log(`amount: ${amount.toString()}\ndelegateTo: ${delegateTo}\npercentage: ${percentage}`);
+                //console.log(`amount: ${amount.toString()}\ndelegateTo: ${delegateTo}\npercentage: ${percentage}`);
                 expect(amount, "amount staked is not equal to tokensToStake").to.be.bignumber.equal(tokensToStake);
                 expect(delegateTo, "delegated address is different").to.be.bignumber.equal(stakeDelegatedTo);
                 expect(percentage, "percentage of delegation is different").to.be.bignumber.equal(percentageToDelegate);
@@ -507,7 +509,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             it("rewards in 1 day", async () =>
             {
                 const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
-                console.log(`total rewards: ${prettyReward(reward.add(rewardDelegatedAmount))}\nstaking reward for holder: ${prettyReward(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyReward(rewardDelegatedAmount)}`);
+                console.log(`total rewards: ${prettyBn(reward.add(rewardDelegatedAmount))}\nstaking reward for holder: ${prettyBn(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyBn(rewardDelegatedAmount)}`);
             });
 
             it("travel in 7 days", async () =>
@@ -527,7 +529,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             it("rewards in 7 days", async () =>
             {
                 const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
-                console.log(`total rewards: ${prettyReward(reward.add(rewardDelegatedAmount))}\nstaking reward for holder: ${prettyReward(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyReward(rewardDelegatedAmount)}`);
+                console.log(`total rewards: ${prettyBn(reward.add(rewardDelegatedAmount))}\nstaking reward for holder: ${prettyBn(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyBn(rewardDelegatedAmount)}`);
             });
 
             it("travel in 30 dayss", async () =>
@@ -547,7 +549,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             it("rewards in 30 days", async () =>
             {
                 const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
-                console.log(`total rewards: ${prettyReward(reward.add(rewardDelegatedAmount))}\nstaking reward for holder: ${prettyReward(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyReward(rewardDelegatedAmount)}`);
+                console.log(`total rewards: ${prettyBn(reward.add(rewardDelegatedAmount))}\nstaking reward for holder: ${prettyBn(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyBn(rewardDelegatedAmount)}`);
             });
 
             it("travel in 3 months", async () =>
@@ -567,7 +569,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             it("rewards in 3 months", async () =>
             {
                 const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
-                console.log(`total rewards: ${prettyReward(reward.add(rewardDelegatedAmount))}\nstaking reward for holder: ${prettyReward(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyReward(rewardDelegatedAmount)}`);
+                console.log(`total rewards: ${prettyBn(reward.add(rewardDelegatedAmount))}\nstaking reward for holder: ${prettyBn(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyBn(rewardDelegatedAmount)}`);
             });
 
             it("travel in 1 year", async () =>
@@ -587,7 +589,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             it("rewards in 1 year", async () =>
             {
                 const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
-                console.log(`total rewards: ${prettyReward(reward.add(rewardDelegatedAmount))}\nstaking reward for holder: ${prettyReward(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyReward(rewardDelegatedAmount)}`);
+                console.log(`total rewards: ${prettyBn(reward.add(rewardDelegatedAmount))}\nstaking reward for holder: ${prettyBn(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyBn(rewardDelegatedAmount)}`);
             });
 
             it("unstake & burn rewards & stake after 1 year", async () =>
@@ -597,7 +599,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 //
                 await this.token.flexibleUntake({ from: anyone });
                 const currentBalance = await this.token.balanceOf(anyone);
-                //console.log(`current balance: ${prettyReward(currentBalance)}`);
+                //console.log(`current balance: ${prettyBn(currentBalance)}`);
                 //
                 // Burn to test the 2nd year profitability
                 //            
@@ -625,19 +627,19 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             it("rewards in 2 years", async () =>
             {
                 const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
-                console.log(`total rewards: ${prettyReward(reward.add(rewardDelegatedAmount))}\nstaking reward for holder: ${prettyReward(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyReward(rewardDelegatedAmount)}`);
+                console.log(`total rewards: ${prettyBn(reward.add(rewardDelegatedAmount))}\nstaking reward for holder: ${prettyBn(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyBn(rewardDelegatedAmount)}`);
             });
         });
 
-        describe('check my staking rewards', () =>
+        describe('check staking rewards', () =>
         {
             it(`returns anyone ${anyone} balance += rewards`, async () =>
             {
                 //
                 // Calculate rewards
                 //
-                const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
-                console.log(`staking reward for holder: ${prettyReward(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyReward(rewardDelegatedAmount)}`);
+                const { 0: rewardToHolder, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
+                console.log(`staking reward for holder: ${prettyBn(rewardToHolder)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyBn(rewardDelegatedAmount)}`);
                 //
                 // Unstake
                 //
@@ -647,11 +649,105 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 //
                 const balanceHolderNew = await this.token.balanceOf(anyone, { from: anyone });
                 const balanceDelegateNew = await this.token.balanceOf(stakeDelegatedTo, { from: stakeDelegatedTo });
-                const result = tokensToStake.add(reward);
-                console.log(`Balance holder: ${prettyReward(balanceHolderNew)} == ${prettyReward(tokensToStake)} + ${prettyReward(reward)} (${prettyReward(result)})`);
-                console.log(`Balance of delegator: ${prettyReward(balanceDelegateNew)} - rewardDelegatedAmount: ${prettyReward(rewardDelegatedAmount)}`);
-                expect(balanceHolderNew, `balanceHolderNew: ${balanceHolderNew.toString()} == ${tokensToStake.toString()} + ${reward.toString()} (${result.toString()})`).to.be.bignumber.gte(result);
-                expect(balanceDelegateNew, `balanceDelegateNew should be ${bn0.toString()} + ${rewardDelegatedAmount.toString()}`).to.be.bignumber.gte(rewardDelegatedAmount);
+                console.log(`Balance holder: ${prettyBn(balanceHolderNew)} == ${prettyBn(tokensToStake)} + ${prettyBn(rewardToHolder)}`);
+                console.log(`Balance of delegator: ${prettyBn(balanceDelegateNew)} - rewardDelegatedAmount: ${prettyBn(rewardDelegatedAmount)}`);
+                expect(balanceHolderNew, `balanceHolderNew: ${prettyBn(balanceHolderNew)} == ${prettyBn(tokensToStake)} + ${prettyBn(rewardToHolder)}`).to.be.bignumber.gte(tokensToStake);
+                expect(balanceDelegateNew, `balanceDelegateNew should be ${bn0.toString()} + ${prettyBn(rewardDelegatedAmount)}`).to.be.bignumber.gte(bn0);
+                //
+                // Reset anyone account
+                //
+                const tokensToBurn = balanceHolderNew.sub(tokensToStake);
+                //console.log(`Balance holder: ${prettyBn(balanceHolderNew)} - tokensToBurn: ${prettyBn(tokensToBurn)}`);
+                await this.token.burn(tokensToBurn, dataInUserTransaction, { from: anyone });
+                const balanceAnyone = await this.token.balanceOf(anyone, { from: anyone });
+                expect(balanceAnyone, `balanceAnyone should be ${prettyBn(tokensToStake)}`).to.be.bignumber.equal(tokensToStake);
+            });
+        });
+    }
+
+    if (hasToTestMaxSupply)
+    {
+        describe('test max supply', () =>
+        {
+            it(`toss a coin to anyone`, async () =>
+            {
+                //
+                // Toss a coin to anyone
+                //
+                const balanceHolderNew = await this.token.balanceOf(anyone, { from: anyone });
+                if (balanceHolderNew.lt(tokensToStake))
+                    await this.token.operatorMintTo(anyone, tokensToStake, dataInUserTransaction, dataInOperatorTransaction, { from: treasuryOperator });
+            });
+
+            it(`mint maxSupply -1`, async () =>
+            {
+                const totalSupply = await this.token.totalSupply();
+                const maxSupply = await this.token.maxSupply();
+                const futureTotal = maxSupply.sub(bn1);
+                console.log(`totalSupply: ${prettyBn(totalSupply)}\nmaxSupply: ${prettyBn(maxSupply)}`);
+
+                const totalMinus1Coin = maxSupply.sub(totalSupply).sub(bn1);
+
+                await this.token.treasuryMint(totalMinus1Coin, dataInUserTransaction, dataInOperatorTransaction, { from: treasury });
+                expect(await this.token.totalSupply(), "registryFunder == 1").to.be.bignumber.equal(futureTotal);
+            });
+
+            it(`mint more than maxSupply returns error`, async () =>
+            {
+                await expectRevert.unspecified(this.token.treasuryMint(bn2, dataInUserTransaction, dataInOperatorTransaction, { from: treasury }));
+            });
+
+            it(`mint the latest coin and burn it`, async () =>
+            {
+                await this.token.treasuryMint(bn1, dataInUserTransaction, dataInOperatorTransaction, { from: treasury });
+                await this.token.burn(bn1, dataInUserTransaction, { from: treasury });
+            });
+
+            it(`flexible stake near max supply ${percentageToDelegate}%`, async () =>
+            {
+                //
+                // Stake all coins
+                //
+                await this.token.flexibleStake(stakeDelegatedTo, percentageToDelegate, { from: anyone });
+
+                const { 0: amount, 1: delegateTo, 2: percentage } = await this.token.flexibleStakeBalance({ from: anyone });
+                //console.log(`amount: ${amount.toString()}\ndelegateTo: ${delegateTo}\npercentage: ${percentage}`);
+                expect(amount, "amount staked is not equal to tokensToStake").to.be.bignumber.equal(tokensToStake);
+                expect(delegateTo, "delegated address is different").to.be.bignumber.equal(stakeDelegatedTo);
+                expect(percentage, "percentage of delegation is different").to.be.bignumber.equal(percentageToDelegate);
+            });
+
+            it("travel in 1 day", async () =>
+            {
+                const blocksToAdvance = Math.round(BLOCKS_PER_DAY);
+                const latest = await time.latestBlock();
+                //console.log(`Current block: ${latest}`);
+
+                await time.advanceBlockTo(parseInt(latest) + blocksToAdvance);
+
+                const current = await time.latestBlock();
+                //console.log(`Current block: ${current}`);
+
+                assert.isTrue((current - latest) == blocksToAdvance);
+            });
+
+            it(`flexible unstake returns +1 delegated +0`, async () =>
+            {
+                //
+                // Calculate rewards
+                //
+                //const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
+                //console.log(`staking reward for holder: ${prettyBn(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyBn(rewardDelegatedAmount)}`);
+                //
+                // Unstake
+                //
+                await this.token.flexibleUntake({ from: anyone });
+                //
+                // Max supply reached
+                //
+                const totalSupply = await this.token.totalSupply();
+                const maxSupply = await this.token.maxSupply();
+                expect(totalSupply, "didn't reach max supply").to.be.bignumber.equal(maxSupply);
             });
         });
     }
