@@ -77,6 +77,10 @@ contract ERC777_TokenV3 is ERC777_TokenV2, CanStakeFlexible {
         return _flexibleStakeBalance(_msgSender());
     }
 
+    function updateFlexibleStakingHalving() external onlyTreasury {
+        _updateFlexibleStakingHalving();
+    }
+
     function calculateFlexibleStakeReward()
         external
         view

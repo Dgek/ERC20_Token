@@ -490,106 +490,80 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             });
         });
 
+        const travelInTimeForDays = async (daysToAdvance) =>
+        {
+
+            const blocksToAdvance = Math.round(BLOCKS_PER_DAY * daysToAdvance);
+            const latest = await time.latestBlock();
+            //console.log(`Current block: ${latest}`);
+
+            await time.advanceBlockTo(parseInt(latest) + blocksToAdvance);
+
+            const current = await time.latestBlock();
+            //console.log(`Current block: ${current}`);
+
+            assert.isTrue((current - latest) == blocksToAdvance);
+        }
+
+        const checkFlexibleStakingRewards = async () =>
+        {
+            const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
+            console.log(`total rewards: ${prettyBn(reward.add(rewardDelegatedAmount))}\nstaking reward for holder: ${prettyBn(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyBn(rewardDelegatedAmount)}`);
+
+            const { 0: _stakingDifficulty, 1: _halvingBlocksNumber } = await this.token.getFlexibleStakeDifficulty({ from: treasury });
+            console.log(`Staking Rewards difficulty set to: ${_stakingDifficulty.toString()} with halving at: ${_halvingBlocksNumber.toString()}`);
+        }
+
         describe('time travel...', () =>
         {
             it("travel in 1 day", async () =>
             {
-                const blocksToAdvance = Math.round(BLOCKS_PER_DAY);
-                const latest = await time.latestBlock();
-                //console.log(`Current block: ${latest}`);
-
-                await time.advanceBlockTo(parseInt(latest) + blocksToAdvance);
-
-                const current = await time.latestBlock();
-                //console.log(`Current block: ${current}`);
-
-                assert.isTrue((current - latest) == blocksToAdvance);
+                await travelInTimeForDays(0);
             });
 
             it("rewards in 1 day", async () =>
             {
-                const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
-                console.log(`total rewards: ${prettyBn(reward.add(rewardDelegatedAmount))}\nstaking reward for holder: ${prettyBn(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyBn(rewardDelegatedAmount)}`);
+                await checkFlexibleStakingRewards();
             });
 
             it("travel in 7 days", async () =>
             {
-                const blocksToAdvance = Math.round(BLOCKS_PER_DAY * 6);
-                const latest = await time.latestBlock();
-                //console.log(`Current block: ${latest}`);
-
-                await time.advanceBlockTo(parseInt(latest) + blocksToAdvance);
-
-                const current = await time.latestBlock();
-                //console.log(`Current block: ${current}`);
-
-                assert.isTrue((current - latest) == blocksToAdvance);
+                await travelInTimeForDays(6);
             });
 
             it("rewards in 7 days", async () =>
             {
-                const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
-                console.log(`total rewards: ${prettyBn(reward.add(rewardDelegatedAmount))}\nstaking reward for holder: ${prettyBn(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyBn(rewardDelegatedAmount)}`);
+                await checkFlexibleStakingRewards();
             });
 
             it("travel in 30 dayss", async () =>
             {
-                const blocksToAdvance = Math.round(BLOCKS_PER_DAY * 23);
-                const latest = await time.latestBlock();
-                //console.log(`Current block: ${latest}`);
-
-                await time.advanceBlockTo(parseInt(latest) + blocksToAdvance);
-
-                const current = await time.latestBlock();
-                //console.log(`Current block: ${current}`);
-
-                assert.isTrue((current - latest) == blocksToAdvance);
+                await travelInTimeForDays(23);
             });
 
             it("rewards in 30 days", async () =>
             {
-                const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
-                console.log(`total rewards: ${prettyBn(reward.add(rewardDelegatedAmount))}\nstaking reward for holder: ${prettyBn(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyBn(rewardDelegatedAmount)}`);
+                await checkFlexibleStakingRewards();
             });
 
             it("travel in 3 months", async () =>
             {
-                const blocksToAdvance = Math.round(BLOCKS_PER_DAY * 60);
-                const latest = await time.latestBlock();
-                //console.log(`Current block: ${latest}`);
-
-                await time.advanceBlockTo(parseInt(latest) + blocksToAdvance);
-
-                const current = await time.latestBlock();
-                //console.log(`Current block: ${current}`);
-
-                assert.isTrue((current - latest) == blocksToAdvance);
+                await travelInTimeForDays(60);
             });
 
             it("rewards in 3 months", async () =>
             {
-                const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
-                console.log(`total rewards: ${prettyBn(reward.add(rewardDelegatedAmount))}\nstaking reward for holder: ${prettyBn(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyBn(rewardDelegatedAmount)}`);
+                await checkFlexibleStakingRewards();
             });
 
             it("travel in 1 year", async () =>
             {
-                const blocksToAdvance = Math.round(BLOCKS_PER_DAY * 275);
-                const latest = await time.latestBlock();
-                //console.log(`Current block: ${latest}`);
-
-                await time.advanceBlockTo(parseInt(latest) + blocksToAdvance);
-
-                const current = await time.latestBlock();
-                //console.log(`Current block: ${current}`);
-
-                assert.isTrue((current - latest) == blocksToAdvance);
+                await travelInTimeForDays(275);
             });
 
             it("rewards in 1 year", async () =>
             {
-                const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
-                console.log(`total rewards: ${prettyBn(reward.add(rewardDelegatedAmount))}\nstaking reward for holder: ${prettyBn(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyBn(rewardDelegatedAmount)}`);
+                await checkFlexibleStakingRewards();
             });
 
             it("unstake & burn rewards & stake after 1 year", async () =>
@@ -598,6 +572,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 // Unstake
                 //
                 await this.token.flexibleUntake({ from: anyone });
+
                 const currentBalance = await this.token.balanceOf(anyone);
                 //console.log(`current balance: ${prettyBn(currentBalance)}`);
                 //
@@ -612,22 +587,12 @@ contract(process.env.TOKEN_NAME, (accounts) =>
 
             it("travel in 2 years", async () =>
             {
-                const blocksToAdvance = Math.round(BLOCKS_PER_DAY * 365);
-                const latest = await time.latestBlock();
-                //console.log(`Current block: ${latest}`);
-
-                await time.advanceBlockTo(parseInt(latest) + blocksToAdvance);
-
-                const current = await time.latestBlock();
-                //console.log(`Current block: ${current}`);
-
-                assert.isTrue((current - latest) == blocksToAdvance);
+                await travelInTimeForDays(365);
             });
 
             it("rewards in 2 years", async () =>
             {
-                const { 0: reward, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
-                console.log(`total rewards: ${prettyBn(reward.add(rewardDelegatedAmount))}\nstaking reward for holder: ${prettyBn(reward)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyBn(rewardDelegatedAmount)}`);
+                await checkFlexibleStakingRewards();
             });
         });
 

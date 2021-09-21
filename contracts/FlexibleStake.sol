@@ -44,6 +44,13 @@ contract CanStakeFlexible {
         uint256 rewardAmountToDelegate
     );
 
+    event LogUpdateFlexibleStakingHalving(
+        bool needsToHalf,
+        uint256 referenceBlockNumber,
+        uint256 currentBlockNumber,
+        uint256 stakingDifficulty
+    );
+
     function _setupFlexibleStaking(uint256 referenceBlockNumber) internal {
         require(referenceBlockNumber != 0, "referenceBlockNumber cannot be 0");
         _referenceBlockNumber = referenceBlockNumber;
@@ -158,17 +165,22 @@ contract CanStakeFlexible {
         );
     }
 
-    function _calculateFlexibleHalving() internal {
+    function _updateFlexibleStakingHalving() internal {
         //
         // Calculate halving reward multiplier
         //
-        bool needsToHalf = block.number > _referenceBlockNumber**2
-            ? true
-            : false;
+        bool needsToHalf = block.number > _halvingBlocksNumber ? true : false;
         if (needsToHalf) {
-            _stakingDifficulty**2;
+            _stakingDifficulty = _stakingDifficulty * 2;
             _referenceBlockNumber = block.number;
         }
+
+        emit LogUpdateFlexibleStakingHalving(
+            needsToHalf,
+            _referenceBlockNumber,
+            block.number,
+            _stakingDifficulty
+        );
     }
 
     function _flexibleUntake(address _account)
@@ -181,7 +193,7 @@ contract CanStakeFlexible {
     {
         require(_stakes[_account].sinceBlock != 0, "nothing to unstake");
 
-        _calculateFlexibleHalving();
+        _updateFlexibleStakingHalving();
 
         (
             uint256 rewardAmountToHolder,
