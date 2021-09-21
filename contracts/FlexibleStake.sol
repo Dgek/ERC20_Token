@@ -169,7 +169,10 @@ contract CanStakeFlexible {
         //
         // Calculate halving reward multiplier
         //
-        bool needsToHalf = block.number > _halvingBlocksNumber ? true : false;
+        bool needsToHalf = block.number >
+            (_referenceBlockNumber + _halvingBlocksNumber)
+            ? true
+            : false;
         if (needsToHalf) {
             _stakingDifficulty = _stakingDifficulty * 2;
             _referenceBlockNumber = block.number;

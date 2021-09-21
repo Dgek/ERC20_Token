@@ -514,6 +514,23 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             console.log(`Staking Rewards difficulty set to: ${_stakingDifficulty.toString()} with halving at: ${_halvingBlocksNumber.toString()}`);
         }
 
+        const flexibleUnstakeAndBurn = async () =>
+        {
+            //
+            // Unstake
+            //
+            await this.token.flexibleUntake({ from: anyone });
+
+            const currentBalance = await this.token.balanceOf(anyone);
+            //console.log(`current balance: ${prettyBn(currentBalance)}`);
+            //
+            // Burn to test the 2nd year profitability
+            //            
+            const balanceToBurn = currentBalance.sub(tokensToStake);
+            await this.token.burn(balanceToBurn, dataInUserTransaction, { from: anyone });
+            expect(await this.token.balanceOf(anyone)).to.be.bignumber.equal(tokensToStake);
+        }
+
         describe('time travel...', () =>
         {
             it("travel in 1 day", async () =>
@@ -568,21 +585,8 @@ contract(process.env.TOKEN_NAME, (accounts) =>
 
             it("unstake & burn rewards & stake after 1 year", async () =>
             {
-                //
-                // Unstake
-                //
-                await this.token.flexibleUntake({ from: anyone });
-
-                const currentBalance = await this.token.balanceOf(anyone);
-                //console.log(`current balance: ${prettyBn(currentBalance)}`);
-                //
-                // Burn to test the 2nd year profitability
-                //            
-                const balanceToBurn = currentBalance.sub(tokensToStake);
-                await this.token.burn(balanceToBurn, dataInUserTransaction, { from: anyone });
-                expect(await this.token.balanceOf(anyone)).to.be.bignumber.equal(tokensToStake);
-
-                await this.token.flexibleStake(stakeDelegatedTo, 30, { from: anyone });
+                await flexibleUnstakeAndBurn();
+                await this.token.flexibleStake(stakeDelegatedTo, percentageToDelegate, { from: anyone });
             });
 
             it("travel in 2 years", async () =>
@@ -594,38 +598,26 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             {
                 await checkFlexibleStakingRewards();
             });
-        });
 
-        describe('check staking rewards', () =>
-        {
-            it(`returns anyone ${anyone} balance += rewards`, async () =>
+            it("unstake & burn rewards & stake after 2 year", async () =>
             {
-                //
-                // Calculate rewards
-                //
-                const { 0: rewardToHolder, 1: rewardDelegatedTo, 2: rewardDelegatedAmount } = await this.token.calculateFlexibleStakeReward({ from: anyone });
-                console.log(`staking reward for holder: ${prettyBn(rewardToHolder)}\ndelegated to: ${rewardDelegatedTo}\nreward delegated: ${prettyBn(rewardDelegatedAmount)}`);
-                //
-                // Unstake
-                //
-                await this.token.flexibleUntake({ from: anyone });
-                //
-                // Check the new balances
-                //
-                const balanceHolderNew = await this.token.balanceOf(anyone, { from: anyone });
-                const balanceDelegateNew = await this.token.balanceOf(stakeDelegatedTo, { from: stakeDelegatedTo });
-                console.log(`Balance holder: ${prettyBn(balanceHolderNew)} == ${prettyBn(tokensToStake)} + ${prettyBn(rewardToHolder)}`);
-                console.log(`Balance of delegator: ${prettyBn(balanceDelegateNew)} - rewardDelegatedAmount: ${prettyBn(rewardDelegatedAmount)}`);
-                expect(balanceHolderNew, `balanceHolderNew: ${prettyBn(balanceHolderNew)} == ${prettyBn(tokensToStake)} + ${prettyBn(rewardToHolder)}`).to.be.bignumber.gte(tokensToStake);
-                expect(balanceDelegateNew, `balanceDelegateNew should be ${bn0.toString()} + ${prettyBn(rewardDelegatedAmount)}`).to.be.bignumber.gte(bn0);
-                //
-                // Reset anyone account
-                //
-                const tokensToBurn = balanceHolderNew.sub(tokensToStake);
-                //console.log(`Balance holder: ${prettyBn(balanceHolderNew)} - tokensToBurn: ${prettyBn(tokensToBurn)}`);
-                await this.token.burn(tokensToBurn, dataInUserTransaction, { from: anyone });
-                const balanceAnyone = await this.token.balanceOf(anyone, { from: anyone });
-                expect(balanceAnyone, `balanceAnyone should be ${prettyBn(tokensToStake)}`).to.be.bignumber.equal(tokensToStake);
+                await flexibleUnstakeAndBurn();
+                await this.token.flexibleStake(stakeDelegatedTo, percentageToDelegate, { from: anyone });
+            });
+
+            it("travel in 3 years", async () =>
+            {
+                await travelInTimeForDays(365);
+            });
+
+            it("rewards in 3 years", async () =>
+            {
+                await checkFlexibleStakingRewards();
+            });
+
+            it("unstake & burn rewards & stake after 3 year", async () =>
+            {
+                await flexibleUnstakeAndBurn();
             });
         });
     }
@@ -648,13 +640,15 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             {
                 const totalSupply = await this.token.totalSupply();
                 const maxSupply = await this.token.maxSupply();
-                const futureTotal = maxSupply.sub(bn1);
-                console.log(`totalSupply: ${prettyBn(totalSupply)}\nmaxSupply: ${prettyBn(maxSupply)}`);
+                const toMint = maxSupply.sub(totalSupply).sub(bn1);
+                await this.token.treasuryMint(toMint, dataInUserTransaction, dataInOperatorTransaction, { from: treasury });
+                const newTotalSupply = await this.token.totalSupply();
+
+                console.log(`totalSupply: ${(totalSupply)}\nmaxSupply: ${(maxSupply)}\ntoMint: ${(toMint)}\nnewTotalSupply: ${(newTotalSupply)}`);
 
                 const totalMinus1Coin = maxSupply.sub(totalSupply).sub(bn1);
 
-                await this.token.treasuryMint(totalMinus1Coin, dataInUserTransaction, dataInOperatorTransaction, { from: treasury });
-                expect(await this.token.totalSupply(), "registryFunder == 1").to.be.bignumber.equal(futureTotal);
+                expect(newTotalSupply, "totalSupply == maxSupply - 1").to.be.bignumber.equal(maxSupply.sub(bn1));
             });
 
             it(`mint more than maxSupply returns error`, async () =>
