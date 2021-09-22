@@ -34,6 +34,22 @@ contract CanFlexibleStake {
         uint256 percentage
     );
 
+    event LogReduceStake(
+        address holder,
+        uint256 amount,
+        uint256 sinceBlock,
+        address delegateTo,
+        uint256 percentage
+    );
+
+    event LogGrowStake(
+        address holder,
+        uint256 amount,
+        uint256 sinceBlock,
+        address delegateTo,
+        uint256 percentage
+    );
+
     event LogUnstake(
         address user,
         uint256 stakedAmount,
@@ -239,5 +255,55 @@ contract CanFlexibleStake {
             _flexibleStakes[_account].delegateTo,
             _flexibleStakes[_account].percentage
         );
+    }
+
+    function _reduceFlexibleStakeAmount(address _account, uint256 _amount)
+        internal
+    {
+        require(
+            _flexibleStakes[_account].amount != 0,
+            "Flexible Stake: You are not delegating"
+        );
+        require(
+            _amount <= _flexibleStakes[_account].amount,
+            "Flexible Stake: the amount to reduce exceed the total amount delegated"
+        );
+
+        if (_amount == _flexibleStakes[_account].amount) {
+            delete _flexibleStakes[_account];
+        } else {
+            _flexibleStakes[_account].amount -= _amount;
+        }
+
+        emit LogReduceStake(
+            _account,
+            _flexibleStakes[_account].amount,
+            _flexibleStakes[_account].sinceBlock,
+            _flexibleStakes[_account].delegateTo,
+            _flexibleStakes[_account].percentage
+        );
+    }
+
+    function _growFlexibleStakeAmount(address _account, uint256 _amount)
+        internal
+    {
+        require(
+            _flexibleStakes[_account].amount != 0,
+            "Flexible Stake: You are not delegating"
+        );
+
+        _flexibleStakes[_account].amount += _amount;
+
+        emit LogGrowStake(
+            _account,
+            _flexibleStakes[_account].amount,
+            _flexibleStakes[_account].sinceBlock,
+            _flexibleStakes[_account].delegateTo,
+            _flexibleStakes[_account].percentage
+        );
+    }
+
+    function _isFlexibleStaking(address _account) internal view returns (bool) {
+        return _flexibleStakes[_account].amount > 0 ? true : false;
     }
 }

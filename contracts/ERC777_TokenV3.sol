@@ -3,14 +3,82 @@ pragma solidity ^0.8.0;
 
 import "./ERC777_TokenV2.sol";
 import "./FlexibleStake.sol";
-import "./TimeLockStake.sol";
 
 /**
  * @title TokenV3
  * @dev staking functionality
  */
 // TODO: configure decay in rewards with getReferenceBlockNumber()
-contract ERC777_TokenV3 is ERC777_TokenV2, CanFlexibleStake, CanTimeLockStake {
+contract ERC777_TokenV3 is ERC777_TokenV2, CanFlexibleStake {
+    //
+    // Override transactions to auto flexibly unstake and stop transactions that overcome the lock time staking
+    //
+    /**
+     * @dev Returns the amount of tokens owned by an account (`owner`) and what is locked and in flexible staking.
+     */
+    function balances()
+        external
+        view
+        returns (
+            uint256,
+            uint256,
+            address,
+            uint256,
+            uint256
+        )
+    {
+        uint256 totalBalance = balanceOf(_msgSender());
+        (
+            uint256 flexibleStakingBalance,
+            address flexibleStakingBalanceDelegatedTo,
+            uint256 flexibleStakingBalancePercentage
+        ) = _flexibleStakeBalance(_msgSender());
+        uint256 timeLockStakingBalance = 0; // TODO: balance locked, and also remove from flexible staking¿?
+
+        return (
+            totalBalance,
+            flexibleStakingBalance,
+            flexibleStakingBalanceDelegatedTo,
+            flexibleStakingBalancePercentage,
+            timeLockStakingBalance
+        );
+    }
+
+    /**
+     * @dev Hook that is called after any token transfer. This includes
+     * calls to {send}, {transfer}, {operatorSend}, minting and burning.
+     *
+     * Calling conditions:
+     *
+     * - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens
+     * will be to transferred to `to`.
+     * - when `from` is zero, `amount` tokens will be minted for `to`.
+     * - when `to` is zero, `amount` of ``from``'s tokens will be burned.
+     * - `from` and `to` are never both zero.
+     *
+     * This override grow or reduce the flexible staking amount
+     */
+    function _afterTokenTransfer(
+        address operator,
+        address from,
+        address to,
+        uint256 amount
+    ) internal virtual override whenNotPausedOrFrozen {
+        emit AfterTokenTransfer(operator, from, to, amount);
+        //
+        // Removing amount from flexible staking
+        //
+        if (from != address(0) && _isFlexibleStaking(from)) {
+            _reduceFlexibleStakeAmount(from, amount);
+        }
+        //
+        // Grow amount from flexible staking
+        //
+        if (to != address(0) && _isFlexibleStaking(to)) {
+            _growFlexibleStakeAmount(to, amount);
+        }
+    }
+
     //
     // Flexible Stake
     //
@@ -96,46 +164,5 @@ contract ERC777_TokenV3 is ERC777_TokenV2, CanFlexibleStake, CanTimeLockStake {
         )
     {
         return _calculateFlexibleStakeReward(_msgSender());
-    }
-
-    //
-    // Time Lock Staking
-    //
-    function setTimeLockMultiplierPerMonth(uint256 lockStakingRewardPerMonth)
-        external
-        onlyTreasury
-    {
-        _setTimeLockMultiplierPerMonth(lockStakingRewardPerMonth);
-    }
-
-    function getTimeLockMultiplierPerMonth() external view returns (uint256) {
-        return _getTimeLockMultiplierPerMonth();
-    }
-
-    function getTotalTimeLockAmountStaked() external view returns (uint256) {
-        return _getTotalTimeLockAmountStaked();
-    }
-
-    function calculateTimeLockStakeReward(
-        uint256 amount,
-        uint256 startTime,
-        uint256 releaseTime
-    ) external view returns (uint256) {
-        return _calculateTimeLockStakeReward(amount, startTime, releaseTime);
-    }
-
-    function timeLockStake(uint256 amount, uint256 releaseTime)
-        external
-        whenNotPausedOrFrozen
-    {
-        _timeLockStake(_msgSender(), amount, releaseTime);
-    }
-
-    function timeLockUnstake()
-        external
-        whenNotPausedOrFrozen
-        returns (uint256)
-    {
-        return _timeLockUnstake(_msgSender());
     }
 }

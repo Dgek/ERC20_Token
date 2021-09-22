@@ -26,9 +26,8 @@ const testV1 = false;
 //
 // v3
 //
-const hasToTestFlexibleStaking = false;
+const hasToTestFlexibleStaking = true;
 const hasToTestMaxSupply = false;
-const hasToTestTimeLockStaking = true;
 
 const bn0 = new BN("0".repeat(18));
 const bn1 = new BN("1" + "0".repeat(18));
@@ -42,7 +41,6 @@ const percentageToDelegate = new BN(30);
 const BLOCKS_PER_DAY = 1;   // 1d is 1y
 const halvingBlocksNumber = new BN(BLOCKS_PER_DAY * 365);       // Pretended when to do halvings
 const stakingDifficulty = new BN(240);                          // Pretended initial difficulty
-const timeLockStakingMultiplier = new BN(240);
 
 const prettyBn = (bn) =>
 {
@@ -129,14 +127,10 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             // V3
             //
             await this.token.initializeFlexibleStaking(stakingDifficulty, halvingBlocksNumber, { from: treasury });
-            await this.token.setTimeLockMultiplierPerMonth(timeLockStakingMultiplier);
 
             const { 0: _stakingDifficulty, 1: _halvingBlocksNumber } = await this.token.getFlexibleStakeDifficulty({ from: treasury });
             //console.log(`Staking Rewards difficulty set to: ${_stakingDifficulty.toString()} with halving at: ${_halvingBlocksNumber.toString()}`);
             expect(stakingDifficulty).to.be.bignumber.equal(_stakingDifficulty);
-
-            const _timeLockStakingMultiplier = await this.token.getTimeLockMultiplierPerMonth({ from: treasury });
-            expect(timeLockStakingMultiplier).to.be.bignumber.equal(_timeLockStakingMultiplier);
         }
     });
 
@@ -457,7 +451,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             balances.newOperator = (await this.token.balanceOf(newOperator)).toString();
             console.log(balances);
 
-            withNoERC777TokensSenderOrRecipient(this.token, treasury, anyone, defaultOperatorA, defaultOperatorB, newOperator, dataInUserTransaction, dataInOperatorTransaction);
+            await withNoERC777TokensSenderOrRecipient(this.token, treasury, anyone, defaultOperatorA, defaultOperatorB, newOperator, dataInUserTransaction, dataInOperatorTransaction);
         });
     }
     //
@@ -473,8 +467,16 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 // Toss a coin to anyone
                 //
                 await this.token.operatorMintTo(anyone, tokensToStake, dataInUserTransaction, dataInOperatorTransaction, { from: treasuryOperator });
-                const balanceAnyone = await this.token.balanceOf(anyone, { from: anyone });
-                expect(balanceAnyone).to.be.bignumber.equal(tokensToStake);
+                const { 0: totalBalance,
+                    1: flexibleStakingBalance,
+                    2: flexibleStakingBalanceDelegatedTo,
+                    3: flexibleStakingBalancePercentage,
+                    4: timeLockStakingBalance } = await this.token.balances({ from: anyone });
+                expect(totalBalance).to.be.bignumber.equal(tokensToStake);
+                expect(flexibleStakingBalance).to.be.bignumber.equal(bn0);
+                expect(flexibleStakingBalanceDelegatedTo).to.be.bignumber.equal(ZERO_ADDRESS);
+                expect(flexibleStakingBalancePercentage).to.be.bignumber.equal(bn0);
+                expect(timeLockStakingBalance).to.be.bignumber.equal(bn0);
             });
 
             it(`cannot flexible stake delegated at -1%`, async () =>
@@ -527,18 +529,47 @@ contract(process.env.TOKEN_NAME, (accounts) =>
         const flexibleUnstakeAndBurn = async () =>
         {
             //
+            // Before unstake
+            //
+            const { 0: before_totalBalance,
+                1: before_flexibleStakingBalance,
+                2: before_flexibleStakingBalanceDelegatedTo,
+                3: before_flexibleStakingBalancePercentage,
+                4: before_timeLockStakingBalance } = await this.token.balances({ from: anyone });
+            console.log(`totalBalance: ${prettyBn(before_totalBalance)}\nflexibleStakingBalance: ${prettyBn(before_flexibleStakingBalance)}\nflexibleStakingBalanceDelegatedTo: ${before_flexibleStakingBalanceDelegatedTo}\nflexibleStakingBalancePercentage: ${before_flexibleStakingBalancePercentage}\ntimeLockStakingBalance: ${before_timeLockStakingBalance}`);
+            expect(before_totalBalance).to.be.bignumber.equal(tokensToStake);
+            expect(before_flexibleStakingBalance).to.be.bignumber.equal(tokensToStake);
+            expect(before_flexibleStakingBalanceDelegatedTo).to.be.bignumber.equal(stakeDelegatedTo);
+            expect(before_flexibleStakingBalancePercentage).to.be.bignumber.equal(percentageToDelegate);
+            expect(before_timeLockStakingBalance).to.be.bignumber.equal(bn0);
+            //
             // Unstake
             //
             await this.token.flexibleUntake({ from: anyone });
+            //
+            // After unstake
+            //
+            const { 0: after_totalBalance,
+                1: after_flexibleStakingBalance,
+                2: after_flexibleStakingBalanceDelegatedTo,
+                3: after_flexibleStakingBalancePercentage,
+                4: after_timeLockStakingBalance } = await this.token.balances({ from: anyone });
+            console.log(`totalBalance: ${prettyBn(after_totalBalance)}\nflexibleStakingBalance: ${prettyBn(after_flexibleStakingBalance)}\nflexibleStakingBalanceDelegatedTo: ${after_flexibleStakingBalanceDelegatedTo}\nflexibleStakingBalancePercentage: ${after_flexibleStakingBalancePercentage}\ntimeLockStakingBalance: ${after_timeLockStakingBalance}`);
+            expect(after_totalBalance).to.be.bignumber.gt(tokensToStake);
+            expect(after_flexibleStakingBalance).to.be.bignumber.equal(bn0);
+            expect(after_flexibleStakingBalanceDelegatedTo).to.be.bignumber.equal(ZERO_ADDRESS);
+            expect(after_flexibleStakingBalancePercentage).to.be.bignumber.equal(bn0);
+            expect(after_timeLockStakingBalance).to.be.bignumber.equal(bn0);
 
-            const currentBalance = await this.token.balanceOf(anyone);
-            //console.log(`current balance: ${prettyBn(currentBalance)}`);
+            assert.isTrue(after_totalBalance.gt(before_totalBalance));
             //
             // Burn to test the 2nd year profitability
             //            
-            const balanceToBurn = currentBalance.sub(tokensToStake);
+            const balanceToBurn = after_totalBalance.sub(tokensToStake);
             await this.token.burn(balanceToBurn, dataInUserTransaction, { from: anyone });
+            await this.token.burn(await this.token.balanceOf(stakeDelegatedTo, { from: stakeDelegatedTo }), dataInUserTransaction, { from: stakeDelegatedTo });
             expect(await this.token.balanceOf(anyone)).to.be.bignumber.equal(tokensToStake);
+            expect(await this.token.balanceOf(stakeDelegatedTo)).to.be.bignumber.equal(bn0);
         }
 
         describe('time travel...', () =>
@@ -630,6 +661,83 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 await flexibleUnstakeAndBurn();
             });
         });
+
+        describe('2 accounts doing flexible staking do operations', () =>
+        {
+            it(`toss a coin to anyone and stakeDelegatedTo`, async () =>
+            {
+                //
+                // Toss a coin to anyone
+                //
+                await this.token.burn(await this.token.balanceOf(anyone, { from: anyone }), dataInUserTransaction, { from: anyone });
+                await this.token.burn(await this.token.balanceOf(stakeDelegatedTo, { from: stakeDelegatedTo }), dataInUserTransaction, { from: stakeDelegatedTo });
+                expect(await this.token.balanceOf(anyone)).to.be.bignumber.equal(bn0);
+                expect(await this.token.balanceOf(stakeDelegatedTo)).to.be.bignumber.equal(bn0);
+                await this.token.operatorMintTo(anyone, tokensToStake, dataInUserTransaction, dataInOperatorTransaction, { from: treasuryOperator });
+                await this.token.operatorMintTo(stakeDelegatedTo, tokensToStake, dataInUserTransaction, dataInOperatorTransaction, { from: treasuryOperator });
+                expect(await this.token.balanceOf(anyone)).to.be.bignumber.equal(tokensToStake);
+                expect(await this.token.balanceOf(stakeDelegatedTo)).to.be.bignumber.equal(tokensToStake);
+            });
+
+            it(`send and check flexible staking`, async () =>
+            {
+                //
+                // Stake to each other
+                //
+                await this.token.flexibleStake(stakeDelegatedTo, percentageToDelegate, { from: anyone });
+                await this.token.flexibleStake(anyone, percentageToDelegate, { from: stakeDelegatedTo });
+                await travelInTimeForDays(1);
+                //
+                // Send tokens and check that grows or reduce flexible staking automatically
+                //
+                const anyoneLogs = await this.token.send(stakeDelegatedTo, bn1, dataInUserTransaction, { from: anyone });
+                const stakeDelegatedToLogs = await this.token.send(anyone, bn1, dataInUserTransaction, { from: stakeDelegatedTo });
+                //console.log(anyoneLogs.logs);
+                //console.log(stakeDelegatedToLogs.logs);
+                //
+                // anyone log analysis
+                //
+                expectEvent.inLogs(anyoneLogs.logs, 'LogReduceStake', {
+                    holder: anyone,
+                    amount: tokensToStake.sub(bn1),
+                    delegateTo: stakeDelegatedTo,
+                    percentage: percentageToDelegate
+                });
+
+                expectEvent.inLogs(anyoneLogs.logs, 'LogGrowStake', {
+                    holder: stakeDelegatedTo,
+                    amount: tokensToStake.add(bn1),
+                    delegateTo: anyone,
+                    percentage: percentageToDelegate
+                });
+                //
+                // stakeDelegatedTo log analysis
+                //
+                expectEvent.inLogs(stakeDelegatedToLogs.logs, 'LogReduceStake', {
+                    holder: stakeDelegatedTo,
+                    amount: tokensToStake.sub(bn1),
+                    delegateTo: anyone,
+                    percentage: percentageToDelegate
+                });
+
+                expectEvent.inLogs(stakeDelegatedToLogs.logs, 'LogGrowStake', {
+                    holder: anyone,
+                    amount: tokensToStake.add(bn1),
+                    delegateTo: stakeDelegatedTo,
+                    percentage: percentageToDelegate
+                });
+                expect(await this.token.balanceOf(anyone, { from: anyone })).to.be.bignumber.equal(tokensToStake);
+                expect(await this.token.balanceOf(stakeDelegatedTo, { from: stakeDelegatedTo })).to.be.bignumber.equal(tokensToStake);
+            });
+
+            it(`send and check flexible staking`, async () =>
+            {
+            });
+
+            it(`burn and check flexible staking`, async () =>
+            {
+            });
+        });
     }
 
     if (hasToTestMaxSupply)
@@ -719,60 +827,12 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 expect(totalSupply, "didn't reach max supply").to.be.bignumber.equal(maxSupply);
             });
 
-            it(`Burn all`, async () =>
+            it(`Burn all balance in the treasury previously created to text max supply`, async () =>
             {
-                await this.token.burn(await this.token.totalSupply(), dataInUserTransaction, { from: treasury });
+                const treasuryBalance = await this.token.balanceOf(treasury, { from: treasury });
+
+                await this.token.burn(treasuryBalance, dataInUserTransaction, { from: treasury });
                 await this.token.treasuryMint(bn1, dataInUserTransaction, dataInOperatorTransaction, { from: treasury });
-            });
-        });
-    }
-
-    if (hasToTestTimeLockStaking)
-    {
-        const timeLockStakeForDays = async (balance, days) =>
-        {
-            const currentTime = await time.latest();
-            const releaseTime = currentTime.add(time.duration.days(days));
-            assert.isTrue(currentTime.lt(releaseTime));
-
-            console.log(`currentTime: ${(currentTime)} currentTime: ${(releaseTime)}`);
-
-            await this.token.timeLockStake(balance, releaseTime, { from: anyone });
-        };
-
-        const timeLockStakeCannotUnstake = async () =>
-        {
-            await expectRevert.unspecified(this.token.timeLockUnstake({ from: anyone }));
-        };
-
-        describe('test time lock staking', () =>
-        {
-            it(`toss a coin to anyone`, async () =>
-            {
-                const balance = await this.token.balanceOf(anyone, { from: anyone });
-                if (balance.lt(tokensToStake))
-                    await this.token.operatorMintTo(anyone, tokensToStake, dataInUserTransaction, dataInOperatorTransaction, { from: treasuryOperator });
-            });
-
-            it('rejects a release time in the past', async () =>
-            {
-                const balance = await this.token.balanceOf(anyone, { from: anyone });
-                const currentTime = await time.latest();
-                const pastReleaseTime = currentTime.sub(time.duration.years(1));
-                assert.isTrue(currentTime.gt(pastReleaseTime));
-                //console.log(`balance: ${prettyBn(balance)} pastReleaseTime: ${(pastReleaseTime)} currentTime: ${(currentTime)}`);
-
-                await expectRevert.unspecified(
-                    this.token.timeLockStake(balance, pastReleaseTime, { from: anyone })
-                );
-            });
-
-            it('time lock stake for 1 day', async () =>
-            {
-                const balance = await this.token.balanceOf(anyone, { from: anyone });
-
-                await timeLockStakeForDays(balance, 1);
-                await timeLockStakeCannotUnstake();
             });
         });
     }

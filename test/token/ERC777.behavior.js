@@ -704,7 +704,7 @@ const burnFromHolder = async (token, holder, amount, data) =>
     }
 }
 
-const withNoERC777TokensSenderOrRecipient = (token, treasury, anyone, defaultOperatorA, defaultOperatorB, newOperator, dataInUserTransaction, dataInOperatorTransaction) =>
+const withNoERC777TokensSenderOrRecipient = async (token, treasury, anyone, defaultOperatorA, defaultOperatorB, newOperator, dataInUserTransaction, dataInOperatorTransaction) =>
 {
     describe('with no ERC777TokensSender and no ERC777TokensRecipient implementers', () =>
     {

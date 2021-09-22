@@ -9,7 +9,18 @@ import "./ERC777_UpgradePauseFreeze.sol";
  *  - Preminted initial supply
  */
 contract ERC777_Token is Initializable, ERC777_UpgradePauseFreeze {
-    event BeforeTokenTransfer();
+    event BeforeTokenTransfer(
+        address operator,
+        address from,
+        address to,
+        uint256 amount
+    );
+    event AfterTokenTransfer(
+        address operator,
+        address from,
+        address to,
+        uint256 amount
+    );
     uint256 private _referenceBlockNumber;
 
     function initialize(
@@ -160,14 +171,23 @@ contract ERC777_Token is Initializable, ERC777_UpgradePauseFreeze {
         address operator,
         address from,
         address to,
-        uint256
-    ) internal override whenNotPausedOrFrozen {
-        emit BeforeTokenTransfer();
+        uint256 amount
+    ) internal virtual override whenNotPausedOrFrozen {
+        emit BeforeTokenTransfer(operator, from, to, amount);
         require(!paused(), "contract paused");
         require(!_frozen[_msgSender()], "user address frozen");
         require(!_frozen[operator], "operator address frozen");
         require(!_frozen[from], "from address frozen");
         require(!_frozen[to], "to address frozen");
+    }
+
+    function _afterTokenTransfer(
+        address operator,
+        address from,
+        address to,
+        uint256 amount
+    ) internal virtual override whenNotPausedOrFrozen {
+        emit AfterTokenTransfer(operator, from, to, amount);
     }
 
     uint256[50] private __gap;

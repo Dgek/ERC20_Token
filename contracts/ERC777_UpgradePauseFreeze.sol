@@ -694,6 +694,8 @@ contract ERC777_UpgradePauseFreeze is
 
         emit Minted(operator, account, amount, userData, operatorData);
         emit Transfer(address(0), account, amount);
+
+        _afterTokenTransfer(operator, address(0), account, amount);
     }
 
     /**
@@ -760,7 +762,6 @@ contract ERC777_UpgradePauseFreeze is
         );
 
         _beforeTokenTransfer(operator, from, address(0), amount);
-
         // Update state variables
         uint256 fromBalance = _balances[from];
 
@@ -769,6 +770,8 @@ contract ERC777_UpgradePauseFreeze is
             _balances[from] = fromBalance - amount;
         }
         _totalSupply -= amount;
+
+        _afterTokenTransfer(operator, from, address(0), amount);
 
         emit Burned(operator, from, amount, data, operatorData);
         emit Transfer(from, address(0), amount);
@@ -781,7 +784,7 @@ contract ERC777_UpgradePauseFreeze is
         uint256 amount,
         bytes memory userData,
         bytes memory operatorData
-    ) private {
+    ) internal virtual {
         _beforeTokenTransfer(operator, from, to, amount);
 
         uint256 fromBalance = _balances[from];
@@ -793,6 +796,8 @@ contract ERC777_UpgradePauseFreeze is
             _balances[from] = fromBalance - amount;
         }
         _balances[to] += amount;
+
+        _afterTokenTransfer(operator, from, to, amount);
 
         emit Sent(operator, from, to, amount, userData, operatorData);
         emit Transfer(from, to, amount);
@@ -904,6 +909,27 @@ contract ERC777_UpgradePauseFreeze is
      * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
      */
     function _beforeTokenTransfer(
+        address operator,
+        address from,
+        address to,
+        uint256 amount
+    ) internal virtual {}
+
+    /**
+     * @dev Hook that is called after any token transfer. This includes
+     * calls to {send}, {transfer}, {operatorSend}, minting and burning.
+     *
+     * Calling conditions:
+     *
+     * - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens
+     * will be to transferred to `to`.
+     * - when `from` is zero, `amount` tokens will be minted for `to`.
+     * - when `to` is zero, `amount` of ``from``'s tokens will be burned.
+     * - `from` and `to` are never both zero.
+     *
+     * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
+     */
+    function _afterTokenTransfer(
         address operator,
         address from,
         address to,
