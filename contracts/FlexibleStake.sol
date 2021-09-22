@@ -1,20 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-//import "prb-math/contracts/PRBMathUD60x18.sol";
-
 /**
  * @title TokenV3
  * @dev staking functionality
  */
-contract CanStakeFlexible {
-    struct Stake {
+contract CanFlexibleStake {
+    struct FlexibleStake {
         uint256 amount;
         uint256 sinceBlock;
         address delegateTo;
         uint256 percentage;
     }
-    mapping(address => Stake) internal _stakes;
+    mapping(address => FlexibleStake) internal _flexibleStakes;
     uint256 private constant _MIN_PERCENTAGE_PER_BLOCK = 1;
     uint256 private constant _MAX_PERCENTAGE_PER_BLOCK = 100;
     uint256 private _totalFlexibleAmountStaked;
@@ -52,7 +50,10 @@ contract CanStakeFlexible {
     );
 
     function _setupFlexibleStaking(uint256 referenceBlockNumber) internal {
-        require(referenceBlockNumber != 0, "referenceBlockNumber cannot be 0");
+        require(
+            referenceBlockNumber != 0,
+            "Flexible Stake: referenceBlockNumber cannot be 0"
+        );
         _referenceBlockNumber = referenceBlockNumber;
         emit LogBlockNumberWhenCreated(_referenceBlockNumber);
     }
@@ -95,32 +96,30 @@ contract CanStakeFlexible {
         )
     {
         require(
-            _stakes[_account].delegateTo != address(0),
-            "You are not staking"
+            _flexibleStakes[_account].delegateTo != address(0),
+            "Flexible Stake: You are not staking"
         );
 
         uint256 currentBlock = block.number;
 
         // Reward distribution
-        uint256 stakedForBlocks = (currentBlock - _stakes[_account].sinceBlock);
-        uint256 percentageToDelegate = 100 - _stakes[_account].percentage;
+        uint256 stakedForBlocks = (currentBlock -
+            _flexibleStakes[_account].sinceBlock);
+        uint256 percentageToDelegate = 100 -
+            _flexibleStakes[_account].percentage;
         uint256 percentageToUser = 100 - percentageToDelegate;
         //
         // Simple cycle: y=\left(\frac{T}{p}\right)\cdot x
         //
-        uint256 rewardAmount = (_stakes[_account].amount / _stakingDifficulty) *
-            stakedForBlocks;
-        //
-        // You need to stake more and more to be close to the ratio: y=x^{\frac{T}{p}}
-        //
-        //uint256 rewardAmount = stakedForBlocks**(_stakes[_account].amount / _stakingDifficulty);
+        uint256 rewardAmount = (_flexibleStakes[_account].amount /
+            _stakingDifficulty) * stakedForBlocks;
 
         uint256 rewardAmountToHolder = rewardAmount / percentageToUser;
         uint256 rewardAmountDelegated = rewardAmount / percentageToDelegate;
 
         return (
             rewardAmountToHolder,
-            _stakes[_account].delegateTo,
+            _flexibleStakes[_account].delegateTo,
             rewardAmountDelegated
         );
     }
@@ -131,37 +130,37 @@ contract CanStakeFlexible {
         address _delegateTo,
         uint256 _percentage
     ) internal {
-        require(_amount != 0, "amount to stake > 0");
+        require(_amount != 0, "Flexible Stake: amount to stake > 0");
         require(
-            _stakes[_account].delegateTo == address(0),
-            "You are already delegating"
+            _flexibleStakes[_account].delegateTo == address(0),
+            "Flexible Stake: You are already delegating"
         );
         require(
             _delegateTo != address(0),
-            "Cannot delegate to the zero address"
+            "Flexible Stake: Cannot delegate to the zero address"
         );
         require(
             _percentage >= _MIN_PERCENTAGE_PER_BLOCK,
-            "Cannot delegate less than 1 percentage"
+            "Flexible Stake: Cannot delegate less than 1 percentage"
         );
         require(
             _percentage <= _MAX_PERCENTAGE_PER_BLOCK,
-            "Cannot delegate more than 100 percentage"
+            "Flexible Stake: Cannot delegate more than 100 percentage"
         );
-        require(block.number != 0, "too fast too furious");
+        require(block.number != 0, "Flexible Stake: too fast too furious");
 
-        _stakes[_account] = (
-            Stake(_amount, block.number, _delegateTo, _percentage)
+        _flexibleStakes[_account] = (
+            FlexibleStake(_amount, block.number, _delegateTo, _percentage)
         );
 
         _totalFlexibleAmountStaked += _amount;
 
         emit LogStake(
             _account,
-            _stakes[_account].amount,
-            _stakes[_account].sinceBlock,
-            _stakes[_account].delegateTo,
-            _stakes[_account].percentage
+            _flexibleStakes[_account].amount,
+            _flexibleStakes[_account].sinceBlock,
+            _flexibleStakes[_account].delegateTo,
+            _flexibleStakes[_account].percentage
         );
     }
 
@@ -194,7 +193,10 @@ contract CanStakeFlexible {
             uint256
         )
     {
-        require(_stakes[_account].sinceBlock != 0, "nothing to unstake");
+        require(
+            _flexibleStakes[_account].sinceBlock != 0,
+            "Flexible Stake: nothing to unstake"
+        );
 
         _updateFlexibleStakingHalving();
 
@@ -206,15 +208,15 @@ contract CanStakeFlexible {
 
         emit LogUnstake(
             _account,
-            _stakes[_account].amount,
+            _flexibleStakes[_account].amount,
             rewardAmountToHolder,
             rewardToDelegateTo,
             rewardAmountToDelegate
         );
 
-        _totalFlexibleAmountStaked -= _stakes[_account].amount;
+        _totalFlexibleAmountStaked -= _flexibleStakes[_account].amount;
 
-        delete _stakes[_account];
+        delete _flexibleStakes[_account];
 
         return (
             rewardAmountToHolder,
@@ -233,9 +235,9 @@ contract CanStakeFlexible {
         )
     {
         return (
-            _stakes[_account].amount,
-            _stakes[_account].delegateTo,
-            _stakes[_account].percentage
+            _flexibleStakes[_account].amount,
+            _flexibleStakes[_account].delegateTo,
+            _flexibleStakes[_account].percentage
         );
     }
 }

@@ -3,13 +3,17 @@ pragma solidity ^0.8.0;
 
 import "./ERC777_TokenV2.sol";
 import "./FlexibleStake.sol";
+import "./TimeLockStake.sol";
 
 /**
  * @title TokenV3
  * @dev staking functionality
  */
 // TODO: configure decay in rewards with getReferenceBlockNumber()
-contract ERC777_TokenV3 is ERC777_TokenV2, CanStakeFlexible {
+contract ERC777_TokenV3 is ERC777_TokenV2, CanFlexibleStake, CanTimeLockStake {
+    //
+    // Flexible Stake
+    //
     function getTotalFlexibleAmountStaked() external view returns (uint256) {
         return _getTotalFlexibleAmountStaked();
     }
@@ -92,5 +96,46 @@ contract ERC777_TokenV3 is ERC777_TokenV2, CanStakeFlexible {
         )
     {
         return _calculateFlexibleStakeReward(_msgSender());
+    }
+
+    //
+    // Time Lock Staking
+    //
+    function setTimeLockMultiplierPerMonth(uint256 lockStakingRewardPerMonth)
+        external
+        onlyTreasury
+    {
+        _setTimeLockMultiplierPerMonth(lockStakingRewardPerMonth);
+    }
+
+    function getTimeLockMultiplierPerMonth() external view returns (uint256) {
+        return _getTimeLockMultiplierPerMonth();
+    }
+
+    function getTotalTimeLockAmountStaked() external view returns (uint256) {
+        return _getTotalTimeLockAmountStaked();
+    }
+
+    function calculateTimeLockStakeReward(
+        uint256 amount,
+        uint256 startTime,
+        uint256 releaseTime
+    ) external view returns (uint256) {
+        return _calculateTimeLockStakeReward(amount, startTime, releaseTime);
+    }
+
+    function timeLockStake(uint256 amount, uint256 releaseTime)
+        external
+        whenNotPausedOrFrozen
+    {
+        _timeLockStake(_msgSender(), amount, releaseTime);
+    }
+
+    function timeLockUnstake()
+        external
+        whenNotPausedOrFrozen
+        returns (uint256)
+    {
+        return _timeLockUnstake(_msgSender());
     }
 }

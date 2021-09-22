@@ -18,11 +18,17 @@ const maxSupply = new BN(process.env.TOKEN_MAX_SUPPLY);
 const dataInception = web3.utils.sha3('inception');
 const dataInUserTransaction = web3.utils.sha3('OZ777TestdataInUserTransaction');
 const dataInOperatorTransaction = web3.utils.sha3('OZ777TestdataInOperatorTransaction');
-
-const hasToPrintBasicInfo = true;
-const testV1 = true;
-const testV3 = true;
-const hasToTestMaxSupply = true;
+//
+// v1
+//
+const hasToPrintBasicInfo = false;
+const testV1 = false;
+//
+// v3
+//
+const hasToTestFlexibleStaking = false;
+const hasToTestMaxSupply = false;
+const hasToTestTimeLockStaking = true;
 
 const bn0 = new BN("0".repeat(18));
 const bn1 = new BN("1" + "0".repeat(18));
@@ -36,6 +42,7 @@ const percentageToDelegate = new BN(30);
 const BLOCKS_PER_DAY = 1;   // 1d is 1y
 const halvingBlocksNumber = new BN(BLOCKS_PER_DAY * 365);       // Pretended when to do halvings
 const stakingDifficulty = new BN(240);                          // Pretended initial difficulty
+const timeLockStakingMultiplier = new BN(240);
 
 const prettyBn = (bn) =>
 {
@@ -59,6 +66,21 @@ contract(process.env.TOKEN_NAME, (accounts) =>
         data: dataInception,
         operationData: dataInception
     };
+
+    const travelInTimeForDays = async (daysToAdvance) =>
+    {
+
+        const blocksToAdvance = Math.round(BLOCKS_PER_DAY * daysToAdvance);
+        const latest = await time.latestBlock();
+        //console.log(`Current block: ${latest}`);
+
+        await time.advanceBlockTo(parseInt(latest) + blocksToAdvance);
+
+        const current = await time.latestBlock();
+        //console.log(`Current block: ${current}`);
+
+        assert.isTrue((current - latest) == blocksToAdvance);
+    }
 
     beforeEach(async () =>
     {
@@ -107,11 +129,14 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             // V3
             //
             await this.token.initializeFlexibleStaking(stakingDifficulty, halvingBlocksNumber, { from: treasury });
+            await this.token.setTimeLockMultiplierPerMonth(timeLockStakingMultiplier);
 
             const { 0: _stakingDifficulty, 1: _halvingBlocksNumber } = await this.token.getFlexibleStakeDifficulty({ from: treasury });
-            console.log(`Staking Rewards difficulty set to: ${_stakingDifficulty.toString()} with halving at: ${_halvingBlocksNumber.toString()}`);
-
+            //console.log(`Staking Rewards difficulty set to: ${_stakingDifficulty.toString()} with halving at: ${_halvingBlocksNumber.toString()}`);
             expect(stakingDifficulty).to.be.bignumber.equal(_stakingDifficulty);
+
+            const _timeLockStakingMultiplier = await this.token.getTimeLockMultiplierPerMonth({ from: treasury });
+            expect(timeLockStakingMultiplier).to.be.bignumber.equal(_timeLockStakingMultiplier);
         }
     });
 
@@ -438,7 +463,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
     //
     // V3
     //
-    if (testV3)
+    if (hasToTestFlexibleStaking)
     {
         describe('staking functionality', () =>
         {
@@ -489,21 +514,6 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 await expectRevert.unspecified(this.token.flexibleStake(stakeDelegatedTo, percentageToDelegate, { from: anyone }));
             });
         });
-
-        const travelInTimeForDays = async (daysToAdvance) =>
-        {
-
-            const blocksToAdvance = Math.round(BLOCKS_PER_DAY * daysToAdvance);
-            const latest = await time.latestBlock();
-            //console.log(`Current block: ${latest}`);
-
-            await time.advanceBlockTo(parseInt(latest) + blocksToAdvance);
-
-            const current = await time.latestBlock();
-            //console.log(`Current block: ${current}`);
-
-            assert.isTrue((current - latest) == blocksToAdvance);
-        }
 
         const checkFlexibleStakingRewards = async () =>
         {
@@ -631,8 +641,8 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 //
                 // Toss a coin to anyone
                 //
-                const balanceHolderNew = await this.token.balanceOf(anyone, { from: anyone });
-                if (balanceHolderNew.lt(tokensToStake))
+                const balance = await this.token.balanceOf(anyone, { from: anyone });
+                if (balance.lt(tokensToStake))
                     await this.token.operatorMintTo(anyone, tokensToStake, dataInUserTransaction, dataInOperatorTransaction, { from: treasuryOperator });
             });
 
@@ -707,6 +717,62 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 const totalSupply = await this.token.totalSupply();
                 const maxSupply = await this.token.maxSupply();
                 expect(totalSupply, "didn't reach max supply").to.be.bignumber.equal(maxSupply);
+            });
+
+            it(`Burn all`, async () =>
+            {
+                await this.token.burn(await this.token.totalSupply(), dataInUserTransaction, { from: treasury });
+                await this.token.treasuryMint(bn1, dataInUserTransaction, dataInOperatorTransaction, { from: treasury });
+            });
+        });
+    }
+
+    if (hasToTestTimeLockStaking)
+    {
+        const timeLockStakeForDays = async (balance, days) =>
+        {
+            const currentTime = await time.latest();
+            const releaseTime = currentTime.add(time.duration.days(days));
+            assert.isTrue(currentTime.lt(releaseTime));
+
+            console.log(`currentTime: ${(currentTime)} currentTime: ${(releaseTime)}`);
+
+            await this.token.timeLockStake(balance, releaseTime, { from: anyone });
+        };
+
+        const timeLockStakeCannotUnstake = async () =>
+        {
+            await expectRevert.unspecified(this.token.timeLockUnstake({ from: anyone }));
+        };
+
+        describe('test time lock staking', () =>
+        {
+            it(`toss a coin to anyone`, async () =>
+            {
+                const balance = await this.token.balanceOf(anyone, { from: anyone });
+                if (balance.lt(tokensToStake))
+                    await this.token.operatorMintTo(anyone, tokensToStake, dataInUserTransaction, dataInOperatorTransaction, { from: treasuryOperator });
+            });
+
+            it('rejects a release time in the past', async () =>
+            {
+                const balance = await this.token.balanceOf(anyone, { from: anyone });
+                const currentTime = await time.latest();
+                const pastReleaseTime = currentTime.sub(time.duration.years(1));
+                assert.isTrue(currentTime.gt(pastReleaseTime));
+                //console.log(`balance: ${prettyBn(balance)} pastReleaseTime: ${(pastReleaseTime)} currentTime: ${(currentTime)}`);
+
+                await expectRevert.unspecified(
+                    this.token.timeLockStake(balance, pastReleaseTime, { from: anyone })
+                );
+            });
+
+            it('time lock stake for 1 day', async () =>
+            {
+                const balance = await this.token.balanceOf(anyone, { from: anyone });
+
+                await timeLockStakeForDays(balance, 1);
+                await timeLockStakeCannotUnstake();
             });
         });
     }
