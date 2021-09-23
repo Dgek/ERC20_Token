@@ -23,7 +23,6 @@ contract ERC777_TokenV3 is ERC777_TokenV2, CanFlexibleStake {
             uint256,
             uint256,
             address,
-            uint256,
             uint256
         )
     {
@@ -33,14 +32,12 @@ contract ERC777_TokenV3 is ERC777_TokenV2, CanFlexibleStake {
             address flexibleStakingBalanceDelegatedTo,
             uint256 flexibleStakingBalancePercentage
         ) = _flexibleStakeBalance(_msgSender());
-        uint256 timeLockStakingBalance = 0; // TODO: balance locked, and also remove from flexible staking¿?
 
         return (
             totalBalance,
             flexibleStakingBalance,
             flexibleStakingBalanceDelegatedTo,
-            flexibleStakingBalancePercentage,
-            timeLockStakingBalance
+            flexibleStakingBalancePercentage
         );
     }
 

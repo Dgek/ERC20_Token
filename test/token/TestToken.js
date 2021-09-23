@@ -21,13 +21,13 @@ const dataInOperatorTransaction = web3.utils.sha3('OZ777TestdataInOperatorTransa
 //
 // v1
 //
-const hasToPrintBasicInfo = false;
-const testV1 = false;
+const hasToPrintBasicInfo = true;
+const testV1 = true;
 //
 // v3
 //
 const hasToTestFlexibleStaking = true;
-const hasToTestMaxSupply = false;
+const hasToTestMaxSupply = true;
 
 const bn0 = new BN("0".repeat(18));
 const bn1 = new BN("1" + "0".repeat(18));
@@ -449,7 +449,7 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             balances.defaultOperatorA = (await this.token.balanceOf(defaultOperatorA)).toString();
             balances.defaultOperatorB = (await this.token.balanceOf(defaultOperatorB)).toString();
             balances.newOperator = (await this.token.balanceOf(newOperator)).toString();
-            console.log(balances);
+            //console.log(balances);
 
             await withNoERC777TokensSenderOrRecipient(this.token, treasury, anyone, defaultOperatorA, defaultOperatorB, newOperator, dataInUserTransaction, dataInOperatorTransaction);
         });
@@ -470,13 +470,11 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 const { 0: totalBalance,
                     1: flexibleStakingBalance,
                     2: flexibleStakingBalanceDelegatedTo,
-                    3: flexibleStakingBalancePercentage,
-                    4: timeLockStakingBalance } = await this.token.balances({ from: anyone });
+                    3: flexibleStakingBalancePercentage } = await this.token.balances({ from: anyone });
                 expect(totalBalance).to.be.bignumber.equal(tokensToStake);
                 expect(flexibleStakingBalance).to.be.bignumber.equal(bn0);
                 expect(flexibleStakingBalanceDelegatedTo).to.be.bignumber.equal(ZERO_ADDRESS);
                 expect(flexibleStakingBalancePercentage).to.be.bignumber.equal(bn0);
-                expect(timeLockStakingBalance).to.be.bignumber.equal(bn0);
             });
 
             it(`cannot flexible stake delegated at -1%`, async () =>
@@ -534,14 +532,8 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             const { 0: before_totalBalance,
                 1: before_flexibleStakingBalance,
                 2: before_flexibleStakingBalanceDelegatedTo,
-                3: before_flexibleStakingBalancePercentage,
-                4: before_timeLockStakingBalance } = await this.token.balances({ from: anyone });
-            console.log(`totalBalance: ${prettyBn(before_totalBalance)}\nflexibleStakingBalance: ${prettyBn(before_flexibleStakingBalance)}\nflexibleStakingBalanceDelegatedTo: ${before_flexibleStakingBalanceDelegatedTo}\nflexibleStakingBalancePercentage: ${before_flexibleStakingBalancePercentage}\ntimeLockStakingBalance: ${before_timeLockStakingBalance}`);
-            expect(before_totalBalance).to.be.bignumber.equal(tokensToStake);
-            expect(before_flexibleStakingBalance).to.be.bignumber.equal(tokensToStake);
-            expect(before_flexibleStakingBalanceDelegatedTo).to.be.bignumber.equal(stakeDelegatedTo);
-            expect(before_flexibleStakingBalancePercentage).to.be.bignumber.equal(percentageToDelegate);
-            expect(before_timeLockStakingBalance).to.be.bignumber.equal(bn0);
+                3: before_flexibleStakingBalancePercentage } = await this.token.balances({ from: anyone });
+            //console.log(`totalBalance: ${prettyBn(before_totalBalance)}\nflexibleStakingBalance: ${prettyBn(before_flexibleStakingBalance)}\nflexibleStakingBalanceDelegatedTo: ${before_flexibleStakingBalanceDelegatedTo}\nflexibleStakingBalancePercentage: ${before_flexibleStakingBalancePercentage}`);
             //
             // Unstake
             //
@@ -552,23 +544,15 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             const { 0: after_totalBalance,
                 1: after_flexibleStakingBalance,
                 2: after_flexibleStakingBalanceDelegatedTo,
-                3: after_flexibleStakingBalancePercentage,
-                4: after_timeLockStakingBalance } = await this.token.balances({ from: anyone });
-            console.log(`totalBalance: ${prettyBn(after_totalBalance)}\nflexibleStakingBalance: ${prettyBn(after_flexibleStakingBalance)}\nflexibleStakingBalanceDelegatedTo: ${after_flexibleStakingBalanceDelegatedTo}\nflexibleStakingBalancePercentage: ${after_flexibleStakingBalancePercentage}\ntimeLockStakingBalance: ${after_timeLockStakingBalance}`);
-            expect(after_totalBalance).to.be.bignumber.gt(tokensToStake);
-            expect(after_flexibleStakingBalance).to.be.bignumber.equal(bn0);
-            expect(after_flexibleStakingBalanceDelegatedTo).to.be.bignumber.equal(ZERO_ADDRESS);
-            expect(after_flexibleStakingBalancePercentage).to.be.bignumber.equal(bn0);
-            expect(after_timeLockStakingBalance).to.be.bignumber.equal(bn0);
-
+                3: after_flexibleStakingBalancePercentage } = await this.token.balances({ from: anyone });
+            //console.log(`totalBalance: ${prettyBn(after_totalBalance)}\nflexibleStakingBalance: ${prettyBn(after_flexibleStakingBalance)}\nflexibleStakingBalanceDelegatedTo: ${after_flexibleStakingBalanceDelegatedTo}\nflexibleStakingBalancePercentage: ${after_flexibleStakingBalancePercentage}`);
             assert.isTrue(after_totalBalance.gt(before_totalBalance));
             //
             // Burn to test the 2nd year profitability
             //            
-            const balanceToBurn = after_totalBalance.sub(tokensToStake);
-            await this.token.burn(balanceToBurn, dataInUserTransaction, { from: anyone });
+            await this.token.burn(await this.token.balanceOf(anyone, { from: anyone }), dataInUserTransaction, { from: anyone });
             await this.token.burn(await this.token.balanceOf(stakeDelegatedTo, { from: stakeDelegatedTo }), dataInUserTransaction, { from: stakeDelegatedTo });
-            expect(await this.token.balanceOf(anyone)).to.be.bignumber.equal(tokensToStake);
+            expect(await this.token.balanceOf(anyone)).to.be.bignumber.equal(bn0);
             expect(await this.token.balanceOf(stakeDelegatedTo)).to.be.bignumber.equal(bn0);
         }
 
@@ -627,6 +611,8 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             it("unstake & burn rewards & stake after 1 year", async () =>
             {
                 await flexibleUnstakeAndBurn();
+
+                await this.token.operatorMintTo(anyone, tokensToStake, dataInUserTransaction, dataInOperatorTransaction, { from: treasuryOperator });
                 await this.token.flexibleStake(stakeDelegatedTo, percentageToDelegate, { from: anyone });
             });
 
@@ -643,6 +629,8 @@ contract(process.env.TOKEN_NAME, (accounts) =>
             it("unstake & burn rewards & stake after 2 year", async () =>
             {
                 await flexibleUnstakeAndBurn();
+
+                await this.token.operatorMintTo(anyone, tokensToStake, dataInUserTransaction, dataInOperatorTransaction, { from: treasuryOperator });
                 await this.token.flexibleStake(stakeDelegatedTo, percentageToDelegate, { from: anyone });
             });
 
@@ -666,9 +654,6 @@ contract(process.env.TOKEN_NAME, (accounts) =>
         {
             it(`toss a coin to anyone and stakeDelegatedTo`, async () =>
             {
-                //
-                // Toss a coin to anyone
-                //
                 await this.token.burn(await this.token.balanceOf(anyone, { from: anyone }), dataInUserTransaction, { from: anyone });
                 await this.token.burn(await this.token.balanceOf(stakeDelegatedTo, { from: stakeDelegatedTo }), dataInUserTransaction, { from: stakeDelegatedTo });
                 expect(await this.token.balanceOf(anyone)).to.be.bignumber.equal(bn0);
@@ -759,6 +744,11 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 });
                 expect(await this.token.balanceOf(anyone, { from: anyone })).to.be.bignumber.equal(tokensToStake.sub(bn1));
                 expect(await this.token.balanceOf(stakeDelegatedTo, { from: stakeDelegatedTo })).to.be.bignumber.equal(tokensToStake.sub(bn1));
+            });
+
+            it(`flexible unstake and burn`, async () =>
+            {
+                await flexibleUnstakeAndBurn();
             });
         });
     }
