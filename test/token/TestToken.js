@@ -715,14 +715,14 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 //
                 expectEvent.inLogs(stakeDelegatedToLogs.logs, 'LogReduceStake', {
                     holder: stakeDelegatedTo,
-                    amount: tokensToStake.sub(bn1),
+                    amount: tokensToStake,
                     delegateTo: anyone,
                     percentage: percentageToDelegate
                 });
 
                 expectEvent.inLogs(stakeDelegatedToLogs.logs, 'LogGrowStake', {
                     holder: anyone,
-                    amount: tokensToStake.add(bn1),
+                    amount: tokensToStake,
                     delegateTo: stakeDelegatedTo,
                     percentage: percentageToDelegate
                 });
@@ -730,12 +730,35 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 expect(await this.token.balanceOf(stakeDelegatedTo, { from: stakeDelegatedTo })).to.be.bignumber.equal(tokensToStake);
             });
 
-            it(`send and check flexible staking`, async () =>
-            {
-            });
-
             it(`burn and check flexible staking`, async () =>
             {
+                //
+                // Send tokens and check that grows or reduce flexible staking automatically
+                //
+                const anyoneLogs = await this.token.burn(bn1, dataInUserTransaction, { from: anyone });
+                const stakeDelegatedToLogs = await this.token.burn(bn1, dataInUserTransaction, { from: stakeDelegatedTo });
+                //console.log(anyoneLogs.logs);
+                //console.log(stakeDelegatedToLogs.logs);
+                //
+                // anyone log analysis
+                //
+                expectEvent.inLogs(anyoneLogs.logs, 'LogReduceStake', {
+                    holder: anyone,
+                    amount: tokensToStake.sub(bn1),
+                    delegateTo: stakeDelegatedTo,
+                    percentage: percentageToDelegate
+                });
+                //
+                // stakeDelegatedTo log analysis
+                //
+                expectEvent.inLogs(stakeDelegatedToLogs.logs, 'LogReduceStake', {
+                    holder: stakeDelegatedTo,
+                    amount: tokensToStake.sub(bn1),
+                    delegateTo: anyone,
+                    percentage: percentageToDelegate
+                });
+                expect(await this.token.balanceOf(anyone, { from: anyone })).to.be.bignumber.equal(tokensToStake.sub(bn1));
+                expect(await this.token.balanceOf(stakeDelegatedTo, { from: stakeDelegatedTo })).to.be.bignumber.equal(tokensToStake.sub(bn1));
             });
         });
     }
