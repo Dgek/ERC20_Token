@@ -11,13 +11,18 @@ const dataInception = web3.utils.sha3('inception');
 module.exports = async function (deployer, network, accounts)
 {
     const uri = process.env.MULTI_TOKEN_URI;
+    const [registryFunder, treasury, defaultOperatorA, defaultOperatorB] = accounts;
+
     if (network === 'development')
     {
-        const [registryFunder, treasury, defaultOperatorA, defaultOperatorB] = accounts;
         // In a test environment an ERC777 token requires deploying an ERC1820 registry
         await singletons.ERC1820Registry(registryFunder); // founder
-
-        const instance = await deployProxy(MultiToken, [uri], { deployer, initializer: 'initialize' });
-        console.log("Contract MultiToken deployed", instance.address);
     }
+    else if (network === 'testnet')
+    {
+    }
+
+    const instance = await deployProxy(MultiToken, [uri], { deployer, initializer: 'initialize' });
+    console.log(`Contract v1 deployed: ${instance.address}`);
+    console.log(`MultiToken contract v1 deployed: ${instance.address}`);
 };

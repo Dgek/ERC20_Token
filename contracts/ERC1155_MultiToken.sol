@@ -37,7 +37,7 @@ contract ERC1155_MultiToken is
     uint256 public constant SHIELD = 4;
 
     function initialize(string memory uri) public virtual initializer {
-        __ERC1155PresetMinterPauser_init(uri);
+        __ERC1155MinterPauser_init(uri);
     }
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -47,7 +47,7 @@ contract ERC1155_MultiToken is
      * @dev Grants `DEFAULT_ADMIN_ROLE`, `MINTER_ROLE`, and `PAUSER_ROLE` to the account that
      * deploys the contract.
      */
-    function __ERC1155PresetMinterPauser_init(string memory uri)
+    function __ERC1155MinterPauser_init(string memory uri)
         internal
         initializer
     {
@@ -59,10 +59,10 @@ contract ERC1155_MultiToken is
         __ERC1155Burnable_init_unchained();
         __Pausable_init_unchained();
         __ERC1155Pausable_init_unchained();
-        __ERC1155PresetMinterPauser_init_unchained(); /*uri*/
+        __ERC1155MinterPauser_init_unchained(); /*uri*/
     }
 
-    function __ERC1155PresetMinterPauser_init_unchained()
+    function __ERC1155MinterPauser_init_unchained()
         internal
         /*string memory uri*/
         initializer
@@ -90,7 +90,7 @@ contract ERC1155_MultiToken is
     ) public virtual {
         require(
             hasRole(MINTER_ROLE, _msgSender()),
-            "ERC1155PresetMinterPauser: must have minter role to mint"
+            "ERC1155MinterPauser: must have minter role to mint"
         );
 
         _mint(to, id, amount, data);
@@ -107,7 +107,7 @@ contract ERC1155_MultiToken is
     ) public virtual {
         require(
             hasRole(MINTER_ROLE, _msgSender()),
-            "ERC1155PresetMinterPauser: must have minter role to mint"
+            "ERC1155MinterPauser: must have minter role to mint"
         );
 
         _mintBatch(to, ids, amounts, data);
@@ -125,7 +125,7 @@ contract ERC1155_MultiToken is
     function pause() public virtual {
         require(
             hasRole(PAUSER_ROLE, _msgSender()),
-            "ERC1155PresetMinterPauser: must have pauser role to pause"
+            "ERC1155MinterPauser: must have pauser role to pause"
         );
         _pause();
     }
@@ -142,7 +142,7 @@ contract ERC1155_MultiToken is
     function unpause() public virtual {
         require(
             hasRole(PAUSER_ROLE, _msgSender()),
-            "ERC1155PresetMinterPauser: must have pauser role to unpause"
+            "ERC1155MinterPauser: must have pauser role to unpause"
         );
         _unpause();
     }

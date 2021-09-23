@@ -3,13 +3,11 @@ const { ZERO_ADDRESS } = constants;
 
 const { expect } = require('chai');
 
-//const { shouldBehaveLikeERC1155 } = require('./ERC1155.behavior');
-const ERC1155_MultiToken = artifacts.require('ERC1155_MultiToken');
+const MultiToken = artifacts.require('ERC1155_MultiToken');
 
-contract('ERC1155', function (accounts)
+contract('ERC1155MinterPauser', function (accounts)
 {
-    const [operator, tokenHolder, tokenBatchHolder, ...otherAccounts] = accounts;
-    const [registryFunder, treasury, defaultOperatorA, defaultOperatorB, newOperator, anyone, treasuryOperator] = otherAccounts;
+    const [registryFunder, treasury, defaultOperatorA, defaultdefaultOperatorAB, tokenHolder, tokenBatchHolder, ...otherAccounts] = accounts;
 
     const initialURI = process.env.MULTI_TOKEN_URI;
 
@@ -20,21 +18,21 @@ contract('ERC1155', function (accounts)
 
         if (useProxy)
         {
-            this.token = await deployProxy(ERC1155_MultiToken, [initialURI], { treasury, initializer: 'initialize' });
+            this.token = await deployProxy(MultiToken, [initialURI], { treasury, initializer: 'initialize' });
         }
         else
         {
-            this.token = await ERC1155_MultiToken.new(initialURI, { from: treasury });
+            this.token = await MultiToken.new(initialURI, { from: treasury });
             /*
             this.token = await Token.new({ from: registryFunder });
             let logs;
-            ({ logs } = await this.token.initialize(tokenArgs.name, tokenArgs.symbol, tokenArgs.defaultOperators, tokenArgs.initialSupply.toString(), tokenArgs.treasury, tokenArgs.data, tokenArgs.operationData));
+            ({ logs } = await this.token.initialize(tokenArgs.name, tokenArgs.symbol, tokenArgs.defaultdefaultOperatorAs, tokenArgs.initialSupply.toString(), tokenArgs.treasury, tokenArgs.data, tokenArgs.operationData));
             expectEvent.inLogs(logs, 'Minted', {
-                operator: registryFunder,
+                defaultOperatorA: registryFunder,
                 to: treasury,
                 amount: tokenArgs.initialSupply,
                 data: dataInception,
-                operatorData: dataInception
+                defaultOperatorAData: dataInception
             });
 
             await expectRevert.unspecified(this.token.unpause());
@@ -42,12 +40,12 @@ contract('ERC1155', function (accounts)
             await this.token.unpause({ from: treasury });
             await this.token.pause({ from: treasury });
             await this.token.unpause({ from: treasury });
-            await this.token.authorizeOperator(treasuryOperator, { from: treasury });
+            await this.token.authorizedefaultOperatorA(treasurydefaultOperatorA, { from: treasury });
             */
         }
     });
 
-    //shouldBehaveLikeERC1155(otherAccounts);
+    //shouldBehaveLikeERC1155MinterPauser(otherAccounts);
 
     describe('internal functions', function ()
     {
@@ -67,7 +65,7 @@ contract('ERC1155', function (accounts)
             {
                 await expectRevert(
                     this.token.mint(ZERO_ADDRESS, tokenId, mintAmount, data),
-                    'ERC1155: mint to the zero address',
+                    'ERC1155MinterPauser: mint to the zero address',
                 );
             });
 
@@ -75,13 +73,13 @@ contract('ERC1155', function (accounts)
             {
                 beforeEach(async function ()
                 {
-                    ({ logs: this.logs } = await this.token.mint(tokenHolder, tokenId, mintAmount, data, { from: operator }));
+                    ({ logs: this.logs } = await this.token.mint(tokenHolder, tokenId, mintAmount, data, { from: defaultOperatorA }));
                 });
 
                 it('emits a TransferSingle event', function ()
                 {
                     expectEvent.inLogs(this.logs, 'TransferSingle', {
-                        operator,
+                        defaultOperatorA,
                         from: ZERO_ADDRESS,
                         to: tokenHolder,
                         id: tokenId,
@@ -102,7 +100,7 @@ contract('ERC1155', function (accounts)
             {
                 await expectRevert(
                     this.token.mintBatch(ZERO_ADDRESS, tokenBatchIds, mintAmounts, data),
-                    'ERC1155: mint to the zero address',
+                    'ERC1155MinterPauser: mint to the zero address',
                 );
             });
 
@@ -110,12 +108,12 @@ contract('ERC1155', function (accounts)
             {
                 await expectRevert(
                     this.token.mintBatch(tokenBatchHolder, tokenBatchIds, mintAmounts.slice(1), data),
-                    'ERC1155: ids and amounts length mismatch',
+                    'ERC1155MinterPauser: ids and amounts length mismatch',
                 );
 
                 await expectRevert(
                     this.token.mintBatch(tokenBatchHolder, tokenBatchIds.slice(1), mintAmounts, data),
-                    'ERC1155: ids and amounts length mismatch',
+                    'ERC1155MinterPauser: ids and amounts length mismatch',
                 );
             });
 
@@ -128,14 +126,14 @@ contract('ERC1155', function (accounts)
                         tokenBatchIds,
                         mintAmounts,
                         data,
-                        { from: operator },
+                        { from: defaultOperatorA },
                     ));
                 });
 
                 it('emits a TransferBatch event', function ()
                 {
                     expectEvent.inLogs(this.logs, 'TransferBatch', {
-                        operator,
+                        defaultOperatorA,
                         from: ZERO_ADDRESS,
                         to: tokenBatchHolder,
                     });
@@ -162,7 +160,7 @@ contract('ERC1155', function (accounts)
             {
                 await expectRevert(
                     this.token.burn(ZERO_ADDRESS, tokenId, mintAmount),
-                    'ERC1155: burn from the zero address',
+                    'ERC1155MinterPauser: burn from the zero address',
                 );
             });
 
@@ -170,7 +168,7 @@ contract('ERC1155', function (accounts)
             {
                 await expectRevert(
                     this.token.burn(tokenHolder, tokenId, mintAmount),
-                    'ERC1155: burn amount exceeds balance',
+                    'ERC1155MinterPauser: burn amount exceeds balance',
                 );
             });
 
@@ -181,12 +179,12 @@ contract('ERC1155', function (accounts)
                     tokenId,
                     mintAmount,
                     data,
-                    { from: operator },
+                    { from: defaultOperatorA },
                 );
 
                 await expectRevert(
                     this.token.burn(tokenHolder, tokenId, mintAmount.addn(1)),
-                    'ERC1155: burn amount exceeds balance',
+                    'ERC1155MinterPauser: burn amount exceeds balance',
                 );
             });
 
@@ -199,14 +197,14 @@ contract('ERC1155', function (accounts)
                         tokenHolder,
                         tokenId,
                         burnAmount,
-                        { from: operator },
+                        { from: defaultOperatorA },
                     ));
                 });
 
                 it('emits a TransferSingle event', function ()
                 {
                     expectEvent.inLogs(this.logs, 'TransferSingle', {
-                        operator,
+                        defaultOperatorA,
                         from: tokenHolder,
                         to: ZERO_ADDRESS,
                         id: tokenId,
@@ -230,7 +228,7 @@ contract('ERC1155', function (accounts)
             {
                 await expectRevert(
                     this.token.burnBatch(ZERO_ADDRESS, tokenBatchIds, burnAmounts),
-                    'ERC1155: burn from the zero address',
+                    'ERC1155MinterPauser: burn from the zero address',
                 );
             });
 
@@ -238,12 +236,12 @@ contract('ERC1155', function (accounts)
             {
                 await expectRevert(
                     this.token.burnBatch(tokenBatchHolder, tokenBatchIds, burnAmounts.slice(1)),
-                    'ERC1155: ids and amounts length mismatch',
+                    'ERC1155MinterPauser: ids and amounts length mismatch',
                 );
 
                 await expectRevert(
                     this.token.burnBatch(tokenBatchHolder, tokenBatchIds.slice(1), burnAmounts),
-                    'ERC1155: ids and amounts length mismatch',
+                    'ERC1155MinterPauser: ids and amounts length mismatch',
                 );
             });
 
@@ -251,7 +249,7 @@ contract('ERC1155', function (accounts)
             {
                 await expectRevert(
                     this.token.burnBatch(tokenBatchHolder, tokenBatchIds, burnAmounts),
-                    'ERC1155: burn amount exceeds balance',
+                    'ERC1155MinterPauser: burn amount exceeds balance',
                 );
             });
 
@@ -264,14 +262,14 @@ contract('ERC1155', function (accounts)
                         tokenBatchHolder,
                         tokenBatchIds,
                         burnAmounts,
-                        { from: operator },
+                        { from: defaultOperatorA },
                     ));
                 });
 
                 it('emits a TransferBatch event', function ()
                 {
                     expectEvent.inLogs(this.logs, 'TransferBatch', {
-                        operator,
+                        defaultOperatorA,
                         from: tokenBatchHolder,
                         to: ZERO_ADDRESS,
                         // ids: tokenBatchIds,
@@ -295,7 +293,7 @@ contract('ERC1155', function (accounts)
         });
     });
 
-    describe('ERC1155MetadataURI', function ()
+    describe('ERC1155MinterPauserMetadataURI', function ()
     {
         const firstTokenID = new BN('42');
         const secondTokenID = new BN('1337');
