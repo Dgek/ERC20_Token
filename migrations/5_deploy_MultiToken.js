@@ -22,7 +22,7 @@ module.exports = async function (deployer, network, accounts)
     {
     }
 
-    const instance = await deployProxy(MultiToken, [uri], { deployer, initializer: 'initialize' });
+    const instance = await deployProxy(MultiToken, [uri, treasury, [defaultOperatorA, defaultOperatorB]], { deployer, initializer: 'initialize' });
     console.log(`Contract v1 deployed: ${instance.address}`);
     console.log(`MultiToken contract v1 deployed: ${instance.address}`);
 };

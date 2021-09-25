@@ -91,19 +91,15 @@ contract(process.env.TOKEN_NAME, (accounts) =>
         }
 
         this.erc1820 = await singletons.ERC1820Registry(registryFunder); // only for dev network
-        const useProxy = false;
+        const useProxy = true;
 
         if (useProxy)
         {
-            //
-            // TODO: do all deployments and updates to test
-            //
-            this.token = await deployProxy(Token, [tokenArgs.name, tokenArgs.symbol, tokenArgs.defaultOperators, tokenArgs.initialSupply, tokenArgs.maxSupply, tokenArgs.treasury, tokenArgs.data, tokenArgs.operationData], { treasury, initializer: 'initialize' });
+            this.token = await Token.deployed();
         }
         else
         {
             this.token = await Token.new({ from: registryFunder });
-
             let logs;
             ({ logs } = await this.token.initialize(tokenArgs.name, tokenArgs.symbol, tokenArgs.defaultOperators, tokenArgs.initialSupply, tokenArgs.maxSupply, tokenArgs.treasury, tokenArgs.data, tokenArgs.operationData));
 
@@ -114,24 +110,24 @@ contract(process.env.TOKEN_NAME, (accounts) =>
                 data: dataInception,
                 operatorData: dataInception
             });
-            //
-            // V1
-            //
-            if (await this.token.paused())
-            {
-                await this.token.unpause();
-                console.log(`is contract paused? ${await this.token.paused()}`)
-            }
-            await this.token.authorizeOperator(treasuryOperator, { from: treasury });
-            //
-            // V3
-            //
-            await this.token.initializeFlexibleStaking(stakingDifficulty, halvingBlocksNumber, { from: treasury });
-
-            const { 0: _stakingDifficulty, 1: _halvingBlocksNumber } = await this.token.getFlexibleStakeDifficulty({ from: treasury });
-            //console.log(`Staking Rewards difficulty set to: ${_stakingDifficulty.toString()} with halving at: ${_halvingBlocksNumber.toString()}`);
-            expect(stakingDifficulty).to.be.bignumber.equal(_stakingDifficulty);
         }
+        //
+        // V1
+        //
+        if (await this.token.paused())
+        {
+            await this.token.unpause();
+            console.log(`is contract paused? ${await this.token.paused()}`)
+        }
+        await this.token.authorizeOperator(treasuryOperator, { from: treasury });
+        //
+        // V3
+        //
+        await this.token.initializeFlexibleStaking(stakingDifficulty, halvingBlocksNumber, { from: treasury });
+
+        const { 0: _stakingDifficulty, 1: _halvingBlocksNumber } = await this.token.getFlexibleStakeDifficulty({ from: treasury });
+        //console.log(`Staking Rewards difficulty set to: ${_stakingDifficulty.toString()} with halving at: ${_halvingBlocksNumber.toString()}`);
+        expect(stakingDifficulty).to.be.bignumber.equal(_stakingDifficulty);
     });
 
     if (hasToPrintBasicInfo)

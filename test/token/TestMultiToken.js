@@ -1,151 +1,175 @@
-const { BN, expectEvent, expectRevert, singletons, constants } = require('@openzeppelin/test-helpers');
+const { BN, expectEvent, expectRevert, singletons, constants } = require("@openzeppelin/test-helpers");
 const { ZERO_ADDRESS } = constants;
 
-const { expect } = require('chai');
+const { expect } = require("chai");
 
-const MultiToken = artifacts.require('ERC1155_MultiToken');
+const MultiToken = artifacts.require("ERC1155_MultiToken");
 
-contract('ERC1155MinterPauser', function (accounts)
+contract("MultiToken", function (accounts)
 {
-    const [registryFunder, treasury, defaultOperatorA, defaultdefaultOperatorAB, tokenHolder, tokenBatchHolder, ...otherAccounts] = accounts;
+    const [registryFunder, treasury, defaultOperatorA, defaultOperatorB, tokenHolder, tokenBatchHolder, ...otherAccounts] = accounts;
 
     const initialURI = process.env.MULTI_TOKEN_URI;
+    const MINERAL = new BN(0);
+    const GAS = new BN(1);
+    const ENERGON = new BN(2);
+    const NFT_TERRAIN = new BN(3);
 
-    beforeEach(async function ()
+    const mintAmount = new BN(9001);
+    const burnAmount = new BN(3000);
+    const mintAmounts = [new BN(5000), new BN(10000), new BN(42195)];
+    const burnAmounts = [new BN(5000), new BN(9001), new BN(195)];
+    const tokenBatchIds = [MINERAL, GAS, ENERGON];
+
+    const fakeTokenId = new BN(1990);
+    const fakeTokenBatchIds = [new BN(2000), new BN(2010), new BN(2020)];
+    const data = web3.utils.sha3('TestUnit');
+
+    async function burnAllAssets(token, holder)
+    {
+        const holderBatchBalances = await token.balanceOfBatch(
+            new Array(tokenBatchIds.length).fill(holder),
+            tokenBatchIds, { from: treasury }
+        );
+
+        await token.burnAssetBatch(holder, tokenBatchIds, holderBatchBalances, { from: treasury });
+    }
+
+    beforeEach(async () =>
     {
         this.erc1820 = await singletons.ERC1820Registry(registryFunder); // only for dev network
-        const useProxy = false;
+        const useProxy = true;
 
         if (useProxy)
         {
-            this.token = await deployProxy(MultiToken, [initialURI], { treasury, initializer: 'initialize' });
+            this.token = await MultiToken.deployed();
         }
         else
         {
-            this.token = await MultiToken.new(initialURI, { from: treasury });
-            /*
-            this.token = await Token.new({ from: registryFunder });
-            let logs;
-            ({ logs } = await this.token.initialize(tokenArgs.name, tokenArgs.symbol, tokenArgs.defaultdefaultOperatorAs, tokenArgs.initialSupply.toString(), tokenArgs.treasury, tokenArgs.data, tokenArgs.operationData));
-            expectEvent.inLogs(logs, 'Minted', {
-                defaultOperatorA: registryFunder,
-                to: treasury,
-                amount: tokenArgs.initialSupply,
-                data: dataInception,
-                defaultOperatorAData: dataInception
-            });
-
-            await expectRevert.unspecified(this.token.unpause());
-            await expectRevert.unspecified(this.token.pause());
-            await this.token.unpause({ from: treasury });
-            await this.token.pause({ from: treasury });
-            await this.token.unpause({ from: treasury });
-            await this.token.authorizedefaultOperatorA(treasurydefaultOperatorA, { from: treasury });
-            */
+            this.token = await MultiToken.new(initialURI, treasury, [defaultOperatorA, defaultOperatorB], { from: treasury });
         }
     });
-
-    //shouldBehaveLikeERC1155MinterPauser(otherAccounts);
-
-    describe('internal functions', function ()
+    //
+    // Minimum checks to validate the extended and ad-hoc functionality
+    //
+    describe(`double check internal functions`, () =>
     {
-        const tokenId = new BN(1990);
-        const mintAmount = new BN(9001);
-        const burnAmount = new BN(3000);
-
-        const tokenBatchIds = [new BN(2000), new BN(2010), new BN(2020)];
-        const mintAmounts = [new BN(5000), new BN(10000), new BN(42195)];
-        const burnAmounts = [new BN(5000), new BN(9001), new BN(195)];
-
-        const data = '0x12345678';
-
-        describe('_mint', function ()
+        describe(`mint assets`, () =>
         {
-            it('reverts with a zero destination address', async function ()
+            it(`reverts with a zero destination address`, async () =>
             {
-                await expectRevert(
-                    this.token.mint(ZERO_ADDRESS, tokenId, mintAmount, data),
-                    'ERC1155MinterPauser: mint to the zero address',
-                );
+                await expectRevert.unspecified(this.token.mintAsset(ZERO_ADDRESS, MINERAL, mintAmount, data, { from: tokenHolder }));
+                await expectRevert.unspecified(this.token.mintAsset(ZERO_ADDRESS, GAS, mintAmount, data, { from: tokenHolder }));
+                await expectRevert.unspecified(this.token.mintAsset(ZERO_ADDRESS, ENERGON, mintAmount, data, { from: tokenHolder }));
             });
 
-            context('with minted tokens', function ()
+            it(`mint MINERAL`, async () =>
             {
-                beforeEach(async function ()
-                {
-                    ({ logs: this.logs } = await this.token.mint(tokenHolder, tokenId, mintAmount, data, { from: defaultOperatorA }));
+                const { logs: logs } = await this.token.mintAsset(tokenHolder, MINERAL, mintAmount, data, { from: defaultOperatorA });
+                expectEvent.inLogs(logs, `TransferSingle`, {
+                    operator: defaultOperatorA,
+                    from: ZERO_ADDRESS,
+                    to: tokenHolder,
+                    id: MINERAL,
+                    value: mintAmount,
                 });
+            });
 
-                it('emits a TransferSingle event', function ()
-                {
-                    expectEvent.inLogs(this.logs, 'TransferSingle', {
-                        defaultOperatorA,
-                        from: ZERO_ADDRESS,
-                        to: tokenHolder,
-                        id: tokenId,
-                        value: mintAmount,
-                    });
+            it(`mint GAS`, async () =>
+            {
+                ({ logs: this.logs } = await this.token.mintAsset(tokenHolder, GAS, mintAmount, data, { from: defaultOperatorA }));
+                expectEvent.inLogs(this.logs, `TransferSingle`, {
+                    operator: defaultOperatorA,
+                    from: ZERO_ADDRESS,
+                    to: tokenHolder,
+                    id: GAS,
+                    value: mintAmount,
                 });
+            });
 
-                it('credits the minted amount of tokens', async function ()
-                {
-                    expect(await this.token.balanceOf(tokenHolder, tokenId)).to.be.bignumber.equal(mintAmount);
+            it(`mint ENERGON`, async () =>
+            {
+                ({ logs: this.logs } = await this.token.mintAsset(tokenHolder, ENERGON, mintAmount, data, { from: defaultOperatorA }));
+                expectEvent.inLogs(this.logs, `TransferSingle`, {
+                    operator: defaultOperatorA,
+                    from: ZERO_ADDRESS,
+                    to: tokenHolder,
+                    id: ENERGON,
+                    value: mintAmount,
                 });
+            });
+
+            it(`credits MINERAL amount of tokens`, async () =>
+            {
+                expect(await this.token.balanceOf(tokenHolder, MINERAL, { from: tokenHolder })).to.be.bignumber.equal(mintAmount);
+            });
+
+            it(`credits GAS amount of tokens`, async () =>
+            {
+                expect(await this.token.balanceOf(tokenHolder, GAS, { from: tokenHolder })).to.be.bignumber.equal(mintAmount);
+            });
+
+            it(`credits ENERGON amount of tokens`, async () =>
+            {
+                expect(await this.token.balanceOf(tokenHolder, ENERGON, { from: tokenHolder })).to.be.bignumber.equal(mintAmount);
+            });
+
+            it(`burn all assets`, async () =>
+            {
+                await burnAllAssets(this.token, tokenHolder);
+                await burnAllAssets(this.token, tokenBatchHolder);
             });
         });
 
-        describe('_mintBatch', function ()
+        /*
+        describe(`mint assets batch`, () =>
         {
-            it('reverts with a zero destination address', async function ()
+            it(`reverts with a zero destination address`, async () =>
             {
                 await expectRevert(
-                    this.token.mintBatch(ZERO_ADDRESS, tokenBatchIds, mintAmounts, data),
-                    'ERC1155MinterPauser: mint to the zero address',
+                    this.token.mintAssetBatch(ZERO_ADDRESS, tokenBatchIds, mintAmounts, data),
+                    `ERC1155: mint to the zero address`,
                 );
             });
-
-            it('reverts if length of inputs do not match', async function ()
+ 
+            it(`reverts if length of inputs do not match`, async () =>
             {
                 await expectRevert(
-                    this.token.mintBatch(tokenBatchHolder, tokenBatchIds, mintAmounts.slice(1), data),
-                    'ERC1155MinterPauser: ids and amounts length mismatch',
+                    this.token.mintAssetBatch(tokenBatchHolder, tokenBatchIds, mintAmounts.slice(1), data),
+                    `ERC1155: ids and amounts length mismatch`,
                 );
-
+ 
                 await expectRevert(
-                    this.token.mintBatch(tokenBatchHolder, tokenBatchIds.slice(1), mintAmounts, data),
-                    'ERC1155MinterPauser: ids and amounts length mismatch',
+                    this.token.mintAssetBatch(tokenBatchHolder, tokenBatchIds.slice(1), mintAmounts, data),
+                    `ERC1155: ids and amounts length mismatch`,
                 );
             });
-
-            context('with minted batch of tokens', function ()
+ 
+            context(`with minted batch of tokens`, () =>
             {
-                beforeEach(async function ()
+                beforeEach(async () =>
                 {
-                    ({ logs: this.logs } = await this.token.mintBatch(
+                    ({ logs: this.logs } = await this.token.mintAssetBatch(
                         tokenBatchHolder,
                         tokenBatchIds,
                         mintAmounts,
                         data,
-                        { from: defaultOperatorA },
+                        { from: defaultOperatorB },
                     ));
-                });
-
-                it('emits a TransferBatch event', function ()
-                {
-                    expectEvent.inLogs(this.logs, 'TransferBatch', {
-                        defaultOperatorA,
+                    expectEvent.inLogs(this.logs, `TransferBatch`, {
+                        operator: defaultOperatorB,
                         from: ZERO_ADDRESS,
                         to: tokenBatchHolder,
                     });
                 });
-
-                it('credits the minted batch of tokens', async function ()
+ 
+                it(`credits the minted batch of tokens`, async () =>
                 {
                     const holderBatchBalances = await this.token.balanceOfBatch(
                         new Array(tokenBatchIds.length).fill(tokenBatchHolder),
                         tokenBatchIds,
                     );
-
+ 
                     for (let i = 0; i < holderBatchBalances.length; i++)
                     {
                         expect(holderBatchBalances[i]).to.be.bignumber.equal(mintAmounts[i]);
@@ -153,111 +177,103 @@ contract('ERC1155MinterPauser', function (accounts)
                 });
             });
         });
-
-        describe('_burn', function ()
+ 
+        describe(`burn assets`, () =>
         {
-            it('reverts when burning the zero account\'s tokens', async function ()
+            it(`reverts when burning a non-existent token id`, async () =>
             {
                 await expectRevert(
-                    this.token.burn(ZERO_ADDRESS, tokenId, mintAmount),
-                    'ERC1155MinterPauser: burn from the zero address',
+                    this.token.burnAsset(tokenHolder, fakeTokenId, mintAmount, { from: defaultOperatorA }),
+                    `MultiToken: id is not an asset`,
                 );
             });
-
-            it('reverts when burning a non-existent token id', async function ()
+ 
+            it(`reverts when burning more than available tokens`, async () =>
             {
-                await expectRevert(
-                    this.token.burn(tokenHolder, tokenId, mintAmount),
-                    'ERC1155MinterPauser: burn amount exceeds balance',
-                );
-            });
-
-            it('reverts when burning more than available tokens', async function ()
-            {
-                await this.token.mint(
+                await this.token.mintAsset(
                     tokenHolder,
-                    tokenId,
+                    MINERAL,
                     mintAmount,
                     data,
                     { from: defaultOperatorA },
                 );
-
+ 
                 await expectRevert(
-                    this.token.burn(tokenHolder, tokenId, mintAmount.addn(1)),
-                    'ERC1155MinterPauser: burn amount exceeds balance',
+                    this.token.burnAsset(tokenHolder, MINERAL, mintAmount.addn(1), { from: defaultOperatorA }),
+                    `ERC1155: burn amount exceeds balance`,
                 );
             });
-
-            context('with minted-then-burnt tokens', function ()
+ 
+            context(`with minted-then-burnt tokens`, () =>
             {
-                beforeEach(async function ()
+                beforeEach(async () =>
                 {
-                    await this.token.mint(tokenHolder, tokenId, mintAmount, data);
-                    ({ logs: this.logs } = await this.token.burn(
+                    await this.token.mintAsset(tokenHolder, MINERAL, mintAmount, data);
+                    ({ logs: this.logs } = await this.token.burnAsset(
                         tokenHolder,
-                        tokenId,
+                        MINERAL,
                         burnAmount,
                         { from: defaultOperatorA },
                     ));
                 });
-
-                it('emits a TransferSingle event', function ()
+ 
+                it(`emits a TransferSingle event`, () =>
                 {
-                    expectEvent.inLogs(this.logs, 'TransferSingle', {
-                        defaultOperatorA,
+                    expectEvent.inLogs(this.logs, `TransferSingle`, {
+                        operator: defaultOperatorA,
                         from: tokenHolder,
                         to: ZERO_ADDRESS,
-                        id: tokenId,
+                        id: MINERAL,
                         value: burnAmount,
                     });
                 });
-
-                it('accounts for both minting and burning', async function ()
+ 
+                it(`accounts for both minting and burning`, async () =>
                 {
                     expect(await this.token.balanceOf(
                         tokenHolder,
-                        tokenId,
+                        MINERAL,
                     )).to.be.bignumber.equal(mintAmount.sub(burnAmount));
                 });
             });
         });
-
-        describe('_burnBatch', function ()
+        /*
+        describe(`_burnBatch`, () =>
         {
-            it('reverts when burning the zero account\'s tokens', async function ()
+            it(`reverts when burning the zero account\`s tokens`, async () =>
             {
                 await expectRevert(
                     this.token.burnBatch(ZERO_ADDRESS, tokenBatchIds, burnAmounts),
-                    'ERC1155MinterPauser: burn from the zero address',
+                    `ERC1155: burn from the zero address`,
                 );
             });
-
-            it('reverts if length of inputs do not match', async function ()
+    
+            it(`reverts if length of inputs do not match`, async () =>
             {
                 await expectRevert(
                     this.token.burnBatch(tokenBatchHolder, tokenBatchIds, burnAmounts.slice(1)),
-                    'ERC1155MinterPauser: ids and amounts length mismatch',
+                    `ERC1155: ids and amounts length mismatch`,
                 );
-
+    
                 await expectRevert(
                     this.token.burnBatch(tokenBatchHolder, tokenBatchIds.slice(1), burnAmounts),
-                    'ERC1155MinterPauser: ids and amounts length mismatch',
+                    `ERC1155: ids and amounts length mismatch`,
                 );
             });
-
-            it('reverts when burning a non-existent token id', async function ()
+    
+            it(`reverts when burning a non-existent token id`, async () =>
             {
                 await expectRevert(
                     this.token.burnBatch(tokenBatchHolder, tokenBatchIds, burnAmounts),
-                    'ERC1155MinterPauser: burn amount exceeds balance',
+                    `ERC1155: burn amount exceeds balance`,
                 );
             });
-
-            context('with minted-then-burnt tokens', function ()
+    
+            context(`with minted-then-burnt tokens`, () =>
             {
-                beforeEach(async function ()
+                beforeEach(async () =>
                 {
-                    await this.token.mintBatch(tokenBatchHolder, tokenBatchIds, mintAmounts, data);
+                    await this.token.mintAssetBatch(tokenBatchHolder, tokenBatchIds, mintAmounts, data);
                     ({ logs: this.logs } = await this.token.burnBatch(
                         tokenBatchHolder,
                         tokenBatchIds,
@@ -265,25 +281,25 @@ contract('ERC1155MinterPauser', function (accounts)
                         { from: defaultOperatorA },
                     ));
                 });
-
-                it('emits a TransferBatch event', function ()
+    
+                it(`emits a TransferBatch event`, () =>
                 {
-                    expectEvent.inLogs(this.logs, 'TransferBatch', {
-                        defaultOperatorA,
+                    expectEvent.inLogs(this.logs, `TransferBatch`, {
+                        operator: defaultOperatorA,
                         from: tokenBatchHolder,
                         to: ZERO_ADDRESS,
                         // ids: tokenBatchIds,
                         // values: burnAmounts,
                     });
                 });
-
-                it('accounts for both minting and burning', async function ()
+    
+                it(`accounts for both minting and burning`, async () =>
                 {
                     const holderBatchBalances = await this.token.balanceOfBatch(
                         new Array(tokenBatchIds.length).fill(tokenBatchHolder),
                         tokenBatchIds,
                     );
-
+    
                     for (let i = 0; i < holderBatchBalances.length; i++)
                     {
                         expect(holderBatchBalances[i]).to.be.bignumber.equal(mintAmounts[i].sub(burnAmounts[i]));
@@ -292,41 +308,42 @@ contract('ERC1155MinterPauser', function (accounts)
             });
         });
     });
-
-    describe('ERC1155MinterPauserMetadataURI', function ()
+    
+    describe(`MultiTokenMetadataURI`, () =>
     {
-        const firstTokenID = new BN('42');
-        const secondTokenID = new BN('1337');
-
-        it('emits no URI event in constructor', async function ()
+        const firstTokenID = new BN(`42`);
+        const secondTokenID = new BN(`1337`);
+    
+        it(`emits no URI event in constructor`, async () =>
         {
-            await expectEvent.notEmitted.inConstruction(this.token, 'URI');
+            await expectEvent.notEmitted.inConstruction(this.token, `URI`);
         });
-
-        it('sets the initial URI for all token types', async function ()
+    
+        it(`sets the initial URI for all token types`, async () =>
         {
             expect(await this.token.uri(firstTokenID)).to.be.equal(initialURI);
             expect(await this.token.uri(secondTokenID)).to.be.equal(initialURI);
         });
-
-        describe('_setURI', function ()
+    
+        describe(`setUri`, () =>
         {
-            const newURI = 'https://energon.tech/{locale}/{id}.json';
-
-            it('emits no URI event', async function ()
+            const newURI = `https://energon.tech/{locale}/{id}.json`;
+    
+            it(`emits no URI event`, async () =>
             {
-                const receipt = await this.token.setURI(newURI, { from: treasury });
-
-                expectEvent.notEmitted(receipt, 'URI');
+                const receipt = await this.token.setUri(newURI, { from: treasury });
+    
+                expectEvent.notEmitted(receipt, `URI`);
             });
-
-            it('sets the new URI for all token types', async function ()
+    
+            it(`sets the new URI for all token types`, async () =>
             {
-                await this.token.setURI(newURI, { from: treasury });
-
+                await this.token.setUri(newURI, { from: treasury });
+    
                 expect(await this.token.uri(firstTokenID)).to.be.equal(newURI);
                 expect(await this.token.uri(secondTokenID)).to.be.equal(newURI);
             });
         });
+    */
     });
 });

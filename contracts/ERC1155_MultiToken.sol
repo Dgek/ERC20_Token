@@ -27,50 +27,69 @@ contract ERC1155_MultiToken is
     Initializable,
     ContextUpgradeable,
     AccessControlEnumerableUpgradeable,
-    ERC1155BurnableUpgradeable,
+    ERC1155Upgradeable,
     ERC1155PausableUpgradeable
 {
-    uint256 public constant GOLD = 0;
-    uint256 public constant SILVER = 1;
-    uint256 public constant THORS_HAMMER = 2;
-    uint256 public constant SWORD = 3;
-    uint256 public constant SHIELD = 4;
+    uint256 public constant MINERAL = 0;
+    uint256 public constant GAS = 1;
+    uint256 public constant ENERGON = 2;
+    uint256 public constant NFT_TERRAIN = 3;
 
-    function initialize(string memory uri) public virtual initializer {
-        __ERC1155MinterPauser_init(uri);
+    function initialize(
+        string memory uri,
+        address treasury,
+        address[] memory defaultOperators
+    ) public virtual initializer {
+        __MultiToken_init(uri);
+
+        _setupRole(MINTER_ROLE, treasury);
+        _setupRole(BURN_ROLE, treasury);
+        // TODO: operators should not mint and burn...
+        for (uint256 i = 0; i < defaultOperators.length; ++i) {
+            _setupRole(MINTER_ROLE, defaultOperators[i]);
+            _setupRole(BURN_ROLE, defaultOperators[i]);
+            setApprovalForAll(defaultOperators[i], true);
+        }
     }
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant BURN_ROLE = keccak256("BURN_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     /**
      * @dev Grants `DEFAULT_ADMIN_ROLE`, `MINTER_ROLE`, and `PAUSER_ROLE` to the account that
      * deploys the contract.
      */
-    function __ERC1155MinterPauser_init(string memory uri)
-        internal
-        initializer
-    {
+    function __MultiToken_init(string memory uri) internal initializer {
         __Context_init_unchained();
         __ERC165_init_unchained();
         __AccessControl_init_unchained();
         __AccessControlEnumerable_init_unchained();
         __ERC1155_init_unchained(uri);
-        __ERC1155Burnable_init_unchained();
         __Pausable_init_unchained();
         __ERC1155Pausable_init_unchained();
-        __ERC1155MinterPauser_init_unchained(); /*uri*/
-    }
 
-    function __ERC1155MinterPauser_init_unchained()
-        internal
-        /*string memory uri*/
-        initializer
-    {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
-
         _setupRole(MINTER_ROLE, _msgSender());
         _setupRole(PAUSER_ROLE, _msgSender());
+    }
+
+    function _checkAsset(uint256 id) internal pure {
+        if (!(id == MINERAL || id == GAS || id == ENERGON)) {
+            revert("MultiToken: id is not an asset");
+        }
+    }
+
+    modifier onlyAssets(uint256 id) {
+        _checkAsset(id);
+        _;
+    }
+
+    modifier onlyAssetsInArray(uint256[] memory ids) {
+        for (uint256 i = 0; i < ids.length; i++) {
+            _checkAsset(ids[i]);
+        }
+        _;
     }
 
     /**
@@ -82,35 +101,58 @@ contract ERC1155_MultiToken is
      *
      * - the caller must have the `MINTER_ROLE`.
      */
-    function mint(
+    function mintAsset(
         address to,
         uint256 id,
         uint256 amount,
         bytes memory data
-    ) public virtual {
-        require(
-            hasRole(MINTER_ROLE, _msgSender()),
-            "ERC1155MinterPauser: must have minter role to mint"
-        );
-
+    ) public virtual onlyRole(MINTER_ROLE) onlyAssets(id) {
         _mint(to, id, amount, data);
     }
 
     /**
      * @dev xref:ROOT:erc1155.adoc#batch-operations[Batched] variant of {mint}.
      */
-    function mintBatch(
+    function mintAssetBatch(
         address to,
         uint256[] memory ids,
         uint256[] memory amounts,
         bytes memory data
-    ) public virtual {
-        require(
-            hasRole(MINTER_ROLE, _msgSender()),
-            "ERC1155MinterPauser: must have minter role to mint"
-        );
-
+    ) public virtual onlyRole(MINTER_ROLE) onlyAssetsInArray(ids) {
         _mintBatch(to, ids, amounts, data);
+    }
+
+    /**
+     * @dev Destroys `amount` tokens of token type `id` from `account`
+     *
+     * Requirements:
+     *
+     * - `account` cannot be the zero address.
+     * - `account` must have at least `amount` tokens of token type `id`.
+     * - the caller must have the `BURN_ROLE`.
+     */
+    function burnAsset(
+        address account,
+        uint256 id,
+        uint256 amount
+    ) public virtual onlyRole(BURN_ROLE) onlyAssets(id) {
+        _burn(account, id, amount);
+    }
+
+    /**
+     * @dev xref:ROOT:erc1155.adoc#batch-operations[Batched] version of {_burn}.
+     *
+     * Requirements:
+     *
+     * - `ids` and `amounts` must have the same length.
+     * - the caller must have the `BURN_ROLE`.
+     */
+    function burnAssetBatch(
+        address account,
+        uint256[] memory ids,
+        uint256[] memory amounts
+    ) public virtual onlyRole(BURN_ROLE) onlyAssetsInArray(ids) {
+        _burnBatch(account, ids, amounts);
     }
 
     /**
@@ -122,11 +164,7 @@ contract ERC1155_MultiToken is
      *
      * - the caller must have the `PAUSER_ROLE`.
      */
-    function pause() public virtual {
-        require(
-            hasRole(PAUSER_ROLE, _msgSender()),
-            "ERC1155MinterPauser: must have pauser role to pause"
-        );
+    function pause() public virtual onlyRole(PAUSER_ROLE) {
         _pause();
     }
 
@@ -139,11 +177,7 @@ contract ERC1155_MultiToken is
      *
      * - the caller must have the `PAUSER_ROLE`.
      */
-    function unpause() public virtual {
-        require(
-            hasRole(PAUSER_ROLE, _msgSender()),
-            "ERC1155MinterPauser: must have pauser role to unpause"
-        );
+    function unpause() public virtual onlyRole(PAUSER_ROLE) {
         _unpause();
     }
 
@@ -173,6 +207,13 @@ contract ERC1155_MultiToken is
         override(ERC1155Upgradeable, ERC1155PausableUpgradeable)
     {
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
+    }
+
+    function setUri(string memory newuri)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        _setURI(newuri);
     }
 
     uint256[50] private __gap;
