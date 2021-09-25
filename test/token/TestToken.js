@@ -45,8 +45,18 @@ const stakingDifficulty = new BN(240);                          // Pretended ini
 const prettyBn = (bn) =>
 {
     let str = bn.toString();
+    let returnValue;
 
-    return (str.length >= 18 ? str.substr(0, str.length - 18) : "0").replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",");
+    if (str.length >= 18)
+    {
+        returnValue = str.substr(0, str.length - 18).replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",");
+    }
+    else
+    {
+        const pad = 18 - str.length;
+        returnValue = "0." + "0".repeat(pad) + str;
+    }
+    return returnValue;
 }
 
 // Test that Token operates correctly as an ERC20Basic token.
