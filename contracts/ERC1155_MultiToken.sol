@@ -35,7 +35,13 @@ contract ERC1155_MultiToken is
     uint256 public constant ENERGON = 2;
     uint256 public constant NFT_TERRAIN = 3;
 
-    uint256[] internal _totalAssetsSupply;
+    struct Asset {
+        uint256 id;
+        uint256 amount;
+        string uri;
+    }
+
+    Asset[] internal _totalAssetsSupply;
 
     function initialize(
         string memory uri,
@@ -58,9 +64,9 @@ contract ERC1155_MultiToken is
         //
         // Init supply
         //
-        _totalAssetsSupply.push(0); // MINERAL
-        _totalAssetsSupply.push(0); // GAS
-        _totalAssetsSupply.push(0); // ENERGON
+        _totalAssetsSupply.push(Asset(MINERAL, 0, super.uri(MINERAL))); // MINERAL
+        _totalAssetsSupply.push(Asset(GAS, 0, super.uri(MINERAL))); // GAS
+        _totalAssetsSupply.push(Asset(ENERGON, 0, super.uri(MINERAL))); // ENERGON
     }
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -103,7 +109,7 @@ contract ERC1155_MultiToken is
         _;
     }
 
-    function totalAssetsSuply() public view returns (uint256[] memory) {
+    function totalAssetsSuply() public view returns (Asset[] memory) {
         return _totalAssetsSupply;
     }
 
@@ -123,7 +129,7 @@ contract ERC1155_MultiToken is
         bytes memory data
     ) public virtual onlyRole(MINTER_ROLE) onlyAssets(id) {
         _mint(to, id, amount, data);
-        _totalAssetsSupply[id] += amount;
+        _totalAssetsSupply[id].amount += amount;
     }
 
     /**
@@ -138,7 +144,7 @@ contract ERC1155_MultiToken is
         _mintBatch(to, ids, amounts, data);
 
         for (uint256 i = 0; i < ids.length; ++i) {
-            _totalAssetsSupply[ids[i]] += amounts[i];
+            _totalAssetsSupply[ids[i]].amount += amounts[i];
         }
     }
 
@@ -157,7 +163,7 @@ contract ERC1155_MultiToken is
         uint256 amount
     ) public virtual onlyRole(BURN_ROLE) onlyAssets(id) {
         _burn(account, id, amount);
-        _totalAssetsSupply[id] -= amount;
+        _totalAssetsSupply[id].amount -= amount;
     }
 
     /**
@@ -176,7 +182,7 @@ contract ERC1155_MultiToken is
         _burnBatch(account, ids, amounts);
 
         for (uint256 i = 0; i < ids.length; ++i) {
-            _totalAssetsSupply[ids[i]] -= amounts[i];
+            _totalAssetsSupply[ids[i]].amount -= amounts[i];
         }
     }
 
@@ -239,6 +245,10 @@ contract ERC1155_MultiToken is
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         _setURI(newuri);
+
+        for (uint256 i = 0; i < _totalAssetsSupply.length; ++i) {
+            _totalAssetsSupply[i].uri = super.uri(i);
+        }
     }
 
     uint256[50] private __gap;

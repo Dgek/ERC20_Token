@@ -418,10 +418,10 @@ contract("MultiToken", function (accounts)
             it(`total assets supply`, async () =>
             {
                 const assetsSupply = await this.token.totalAssetsSuply();
-
-                expect(assetsSupply[MINERAL]).to.be.bignumber.equal(mintAmounts[MINERAL].muln(3));
-                expect(assetsSupply[GAS]).to.be.bignumber.equal(mintAmounts[GAS].muln(3));
-                expect(assetsSupply[ENERGON]).to.be.bignumber.equal(mintAmounts[ENERGON].muln(3));
+                //console.log(assetsSupply);
+                expect(assetsSupply[MINERAL].amount).to.be.bignumber.equal(mintAmounts[MINERAL].muln(3));
+                expect(assetsSupply[GAS].amount).to.be.bignumber.equal(mintAmounts[GAS].muln(3));
+                expect(assetsSupply[ENERGON].amount).to.be.bignumber.equal(mintAmounts[ENERGON].muln(3));
             });
         });
     }
