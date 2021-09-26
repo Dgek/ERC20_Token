@@ -8,6 +8,7 @@ const MultiToken = artifacts.require("ERC1155_MultiToken");
 // Test types
 //
 const hasToTestBasics = true;
+const hasToTestSupply = true;
 
 contract("MultiToken", function (accounts)
 {
@@ -350,9 +351,6 @@ contract("MultiToken", function (accounts)
 
     describe(`metadata uri`, () =>
     {
-        const firstTokenID = tokenBatchIds[0];
-        const secondTokenID = tokenBatchIds[1];
-
         it(`sets the initial URI for all token types`, async () =>
         {
             expect(await this.token.uri(MINERAL)).to.be.equal(initialURI);
@@ -380,4 +378,51 @@ contract("MultiToken", function (accounts)
             });
         });
     });
+
+    //
+    // Extended functionality
+    //
+    if (hasToTestSupply)
+    {
+        describe(`assets supply`, () =>
+        {
+            it(`burn all assets`, async () =>
+            {
+                await burnAllAssets(this.token, treasury);
+                await burnAllAssets(this.token, tokenHolder);
+                await burnAllAssets(this.token, tokenBatchHolder);
+            });
+
+            it(`give tokens around`, async () =>
+            {
+                await this.token.mintAsset(tokenHolder, MINERAL, mintAmounts[MINERAL], data, { from: defaultOperatorB });
+                await this.token.mintAsset(tokenHolder, GAS, mintAmounts[GAS], data, { from: defaultOperatorB });
+                await this.token.mintAsset(tokenHolder, ENERGON, mintAmounts[ENERGON], data, { from: defaultOperatorB });
+
+                await this.token.mintAssetBatch(
+                    tokenBatchHolder,
+                    tokenBatchIds,
+                    mintAmounts,
+                    data,
+                    { from: defaultOperatorB },
+                );
+                await this.token.mintAssetBatch(
+                    treasury,
+                    tokenBatchIds,
+                    mintAmounts,
+                    data,
+                    { from: defaultOperatorB },
+                );
+            });
+
+            it(`total assets supply`, async () =>
+            {
+                const assetsSupply = await this.token.totalAssetsSuply();
+
+                expect(assetsSupply[MINERAL]).to.be.bignumber.equal(mintAmounts[MINERAL].muln(3));
+                expect(assetsSupply[GAS]).to.be.bignumber.equal(mintAmounts[GAS].muln(3));
+                expect(assetsSupply[ENERGON]).to.be.bignumber.equal(mintAmounts[ENERGON].muln(3));
+            });
+        });
+    }
 });

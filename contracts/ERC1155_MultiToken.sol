@@ -35,6 +35,8 @@ contract ERC1155_MultiToken is
     uint256 public constant ENERGON = 2;
     uint256 public constant NFT_TERRAIN = 3;
 
+    uint256[] internal _totalAssetsSupply;
+
     function initialize(
         string memory uri,
         address treasury,
@@ -42,14 +44,23 @@ contract ERC1155_MultiToken is
     ) public virtual initializer {
         __MultiToken_init(uri);
 
+        //
+        // Setup roles
+        //
         _setupRole(MINTER_ROLE, treasury);
         _setupRole(BURN_ROLE, treasury);
-        // TODO: operators should not mint and burn...
+
         for (uint256 i = 0; i < defaultOperators.length; ++i) {
             _setupRole(MINTER_ROLE, defaultOperators[i]);
             _setupRole(BURN_ROLE, defaultOperators[i]);
             setApprovalForAll(defaultOperators[i], true);
         }
+        //
+        // Init supply
+        //
+        _totalAssetsSupply.push(0); // MINERAL
+        _totalAssetsSupply.push(0); // GAS
+        _totalAssetsSupply.push(0); // ENERGON
     }
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -92,6 +103,10 @@ contract ERC1155_MultiToken is
         _;
     }
 
+    function totalAssetsSuply() public view returns (uint256[] memory) {
+        return _totalAssetsSupply;
+    }
+
     /**
      * @dev Creates `amount` new tokens for `to`, of token type `id`.
      *
@@ -108,6 +123,7 @@ contract ERC1155_MultiToken is
         bytes memory data
     ) public virtual onlyRole(MINTER_ROLE) onlyAssets(id) {
         _mint(to, id, amount, data);
+        _totalAssetsSupply[id] += amount;
     }
 
     /**
@@ -120,6 +136,10 @@ contract ERC1155_MultiToken is
         bytes memory data
     ) public virtual onlyRole(MINTER_ROLE) onlyAssetsInArray(ids) {
         _mintBatch(to, ids, amounts, data);
+
+        for (uint256 i = 0; i < ids.length; ++i) {
+            _totalAssetsSupply[ids[i]] += amounts[i];
+        }
     }
 
     /**
@@ -137,6 +157,7 @@ contract ERC1155_MultiToken is
         uint256 amount
     ) public virtual onlyRole(BURN_ROLE) onlyAssets(id) {
         _burn(account, id, amount);
+        _totalAssetsSupply[id] -= amount;
     }
 
     /**
@@ -153,6 +174,10 @@ contract ERC1155_MultiToken is
         uint256[] memory amounts
     ) public virtual onlyRole(BURN_ROLE) onlyAssetsInArray(ids) {
         _burnBatch(account, ids, amounts);
+
+        for (uint256 i = 0; i < ids.length; ++i) {
+            _totalAssetsSupply[ids[i]] -= amounts[i];
+        }
     }
 
     /**
