@@ -176,6 +176,10 @@ contract("MultiToken", function (accounts)
                         data,
                         { from: defaultOperatorB },
                     ));
+                });
+
+                it(`emits a TransferBatch event`, () =>
+                {
                     expectEvent.inLogs(this.logs, `TransferBatch`, {
                         operator: defaultOperatorB,
                         from: ZERO_ADDRESS,
@@ -242,6 +246,10 @@ contract("MultiToken", function (accounts)
                         burnAmount,
                         { from: defaultOperatorA },
                     ));
+                });
+
+                it(`emits a TransferSingle event`, () =>
+                {
                     expectEvent.inLogs(this.logs, `TransferSingle`, {
                         operator: defaultOperatorA,
                         from: tokenHolder,
@@ -313,8 +321,8 @@ contract("MultiToken", function (accounts)
                         operator: defaultOperatorA,
                         from: tokenBatchHolder,
                         to: ZERO_ADDRESS,
-                        // ids: tokenBatchIds,
-                        // values: burnAmounts,
+                        //ids: tokenBatchIds,
+                        //values: burnAmounts,
                     });
                 });
 
@@ -340,42 +348,36 @@ contract("MultiToken", function (accounts)
         });
     }
 
-
-    /*
-    describe(`MultiTokenMetadataURI`, () =>
+    describe(`metadata uri`, () =>
     {
-        const firstTokenID = new BN(`42`);
-        const secondTokenID = new BN(`1337`);
-    
-        it(`emits no URI event in constructor`, async () =>
-        {
-            await expectEvent.notEmitted.inConstruction(this.token, `URI`);
-        });
-    
+        const firstTokenID = tokenBatchIds[0];
+        const secondTokenID = tokenBatchIds[1];
+
         it(`sets the initial URI for all token types`, async () =>
         {
-            expect(await this.token.uri(firstTokenID)).to.be.equal(initialURI);
-            expect(await this.token.uri(secondTokenID)).to.be.equal(initialURI);
+            expect(await this.token.uri(MINERAL)).to.be.equal(initialURI);
+            expect(await this.token.uri(GAS)).to.be.equal(initialURI);
+            expect(await this.token.uri(ENERGON)).to.be.equal(initialURI);
         });
-    
+
         describe(`setUri`, () =>
         {
             const newURI = `https://energon.tech/{locale}/{id}.json`;
-    
+
             it(`emits no URI event`, async () =>
             {
-                const receipt = await this.token.setUri(newURI, { from: treasury });
-    
+                const receipt = await this.token.setUri(newURI, { from: registryFunder });
                 expectEvent.notEmitted(receipt, `URI`);
             });
-    
+
             it(`sets the new URI for all token types`, async () =>
             {
-                await this.token.setUri(newURI, { from: treasury });
-    
-                expect(await this.token.uri(firstTokenID)).to.be.equal(newURI);
-                expect(await this.token.uri(secondTokenID)).to.be.equal(newURI);
+                await this.token.setUri(newURI, { from: registryFunder });
+
+                expect(await this.token.uri(MINERAL)).to.be.equal(newURI);
+                expect(await this.token.uri(GAS)).to.be.equal(newURI);
+                expect(await this.token.uri(ENERGON)).to.be.equal(newURI);
             });
         });
-    */
+    });
 });
