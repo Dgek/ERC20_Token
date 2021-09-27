@@ -30,18 +30,53 @@ contract ERC1155_MultiToken is
     ERC1155Upgradeable,
     ERC1155PausableUpgradeable
 {
+    //
+    // Additional roles
+    //
+    string private _tokenTypesUri;
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant BURN_ROLE = keccak256("BURN_ROLE");
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    //
+    // Assets
+    //
     uint256 public constant MINERAL = 0;
     uint256 public constant GAS = 1;
     uint256 public constant ENERGON = 2;
-    uint256 public constant NFT_TERRAIN = 3;
-
+    uint256 public constant NFT = 3;
+    /* TODO: remove as is better simplify here and store offchain
+    uint256 public constant NFT_TERRAIN = 3001;
+    uint256 public constant NFT_BUILDING = 3002;
+    uint256 public constant NFT_UNIT = 3003;
+    uint256 public constant NFT_WEAPON = 3004;
+    */
     struct Asset {
         uint256 id;
         uint256 amount;
         string uri;
     }
-
-    Asset[] internal _totalAssetsSupply;
+    // Parallel asset accounting
+    Asset[] private _totalAssetsSupply;
+    //
+    // When the NFT is minted needs to be created in the offchain database an entry with the information.
+    // Ownership is deterimned by the account that holds the nft due to a parallel accounting inside of the Nft struct
+    // as in the wallet of the user will just simply say that an account has 3 or 20 nfts
+    // Example: https://energon.tech/{id}.json
+    //
+    // NFT[0] -> is a terrain, inside the json says 25x25, blah blah
+    // NFT[1] -> is a weapon upgrade, inside the json says that is compatible with which weapon
+    // NFT[2] -> is a unit type worker...
+    // So! when minting, on-chain is stored the identifier and off-chain what really is
+    //
+    struct Nft {
+        uint256 id;
+        address owner;
+        string uri;
+    }
+    // INFO: the first uint256 is the global mapping id when was minted
+    mapping(uint256 => Nft) private _nfts;
+    mapping(address => uint256[]) private _nftOwners;
+    uint256 private _totalNftsSupply;
 
     function initialize(
         string memory uri,
@@ -49,7 +84,6 @@ contract ERC1155_MultiToken is
         address[] memory defaultOperators
     ) public virtual initializer {
         __MultiToken_init(uri);
-
         //
         // Setup roles
         //
@@ -68,10 +102,6 @@ contract ERC1155_MultiToken is
         _totalAssetsSupply.push(Asset(GAS, 0, super.uri(MINERAL))); // GAS
         _totalAssetsSupply.push(Asset(ENERGON, 0, super.uri(MINERAL))); // ENERGON
     }
-
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant BURN_ROLE = keccak256("BURN_ROLE");
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     /**
      * @dev Grants `DEFAULT_ADMIN_ROLE`, `MINTER_ROLE`, and `PAUSER_ROLE` to the account that
@@ -183,6 +213,110 @@ contract ERC1155_MultiToken is
 
         for (uint256 i = 0; i < ids.length; ++i) {
             _totalAssetsSupply[ids[i]].amount -= amounts[i];
+        }
+    }
+
+    /**
+     * @dev Total amount of NFTs minted, will increase when minted and decreased when burned
+     *
+     */
+    function totalNftsSupply() public view returns (uint256) {
+        return _totalNftsSupply;
+    }
+
+    /**
+     * @dev See {IERC1155-balanceOf}.
+     *
+     * Requirements:
+     *
+     * - `account` cannot be the zero address.
+     */
+    function balanceNftsOf(address account)
+        public
+        view
+        virtual
+        returns (uint256, Nft[] memory)
+    {
+        require(
+            account != address(0),
+            "MultiToken: balance nfts query for the zero address"
+        );
+        uint256 numberNfts = _nftOwners[account].length;
+        Nft[] memory balance = new Nft[](numberNfts);
+        for (uint256 i = 0; i < numberNfts; ++i) {
+            Nft memory nft = _nfts[_nftOwners[account][i]];
+            balance[i] = nft;
+        }
+        return (numberNfts, balance);
+    }
+
+    /**
+     * @dev Creates `1` new tokens for `to`, of nft type `id`.
+     * off-chain database must create a json that represent what exactly it is using uri
+     *
+     * Requirements:
+     *
+     * - the caller must have the `MINTER_ROLE`.
+     * - only possible to mint NFT type id.
+     */
+    function mintNft(
+        address to,
+        uint256 nftId,
+        string memory nftUri,
+        bytes memory data
+    ) public virtual onlyRole(MINTER_ROLE) {
+        //
+        // Check if was already minted
+        //
+        require(
+            _nfts[nftId].owner == address(0),
+            "MultiToken: this nft was already minted"
+        );
+        // mint basic accounting
+        _mint(to, NFT, 1, data);
+        //
+        // mint double accounting (extra data and fast access)
+        //
+        _nfts[nftId] = Nft(nftId, to, nftUri);
+        _nftOwners[to].push(nftId);
+        // Grow general counter
+        ++_totalNftsSupply;
+    }
+
+    /**
+     * @dev Destroys `1` token of NFT type from `account`
+     * off-chain databse must destroy this id or save it into a vault for the next user to buy
+     * Requirements:
+     *
+     * - `account` cannot be the zero address and should be the owner of the nftId.
+     * - `nftId` should be owned by `account`
+     * - the caller must have the `BURN_ROLE`.
+     */
+    function burnNft(address account, uint256 nftId)
+        public
+        virtual
+        onlyRole(BURN_ROLE)
+    {
+        require(
+            _nfts[nftId].owner == account,
+            "MultiToken: account is not the owner of this nft"
+        );
+        // Search move and delete from owner array
+        for (uint256 i = 0; i < _nftOwners[account].length; ++i) {
+            if (_nftOwners[account][i] == nftId) {
+                // burn nft from the basic accounting
+                _burn(account, NFT, 1);
+                // Move the last element
+                _nftOwners[account][i] = _nftOwners[account][
+                    _nftOwners[account].length - 1
+                ];
+                // Delete last element
+                _nftOwners[account].pop();
+                // Delete from the registry
+                delete _nfts[nftId];
+                // Reduce general counter
+                ++_totalNftsSupply;
+            }
         }
     }
 

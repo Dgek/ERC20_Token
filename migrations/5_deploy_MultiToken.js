@@ -10,7 +10,6 @@ const dataInception = web3.utils.sha3('inception');
 
 module.exports = async function (deployer, network, accounts)
 {
-    const uri = process.env.MULTI_TOKEN_URI;
     const [registryFunder, treasury, defaultOperatorA, defaultOperatorB] = accounts;
 
     if (network === 'development')
@@ -22,7 +21,7 @@ module.exports = async function (deployer, network, accounts)
     {
     }
 
-    const instance = await deployProxy(MultiToken, [uri, treasury, [defaultOperatorA, defaultOperatorB]], { deployer, initializer: 'initialize' });
+    const instance = await deployProxy(MultiToken, [process.env.MULTI_TOKEN_TYPES_URI, treasury, [defaultOperatorA, defaultOperatorB]], { deployer, initializer: 'initialize' });
     console.log(`Contract v1 deployed: ${instance.address}`);
     console.log(`MultiToken contract v1 deployed: ${instance.address}`);
 };

@@ -9,16 +9,18 @@ const MultiToken = artifacts.require("ERC1155_MultiToken");
 //
 const hasToTestBasics = true;
 const hasToTestSupply = true;
+const hasToTestNfts = true;
+const initialURI = process.env.MULTI_TOKEN_TYPES_URI;
+const NFT_BASE_URI = "https://energon.tech/nft";
 
 contract("MultiToken", function (accounts)
 {
     const [registryFunder, treasury, defaultOperatorA, defaultOperatorB, tokenHolder, tokenBatchHolder, ...otherAccounts] = accounts;
 
-    const initialURI = process.env.MULTI_TOKEN_URI;
     const MINERAL = new BN(0);
     const GAS = new BN(1);
     const ENERGON = new BN(2);
-    const NFT_TERRAIN = new BN(3);
+    const NFT = new BN(3);
 
     const mintAmount = new BN(9001);
     const burnAmount = new BN(3000);
@@ -38,6 +40,13 @@ contract("MultiToken", function (accounts)
         );
 
         await token.burnAssetBatch(holder, tokenBatchIds, holderBatchBalances, { from: treasury });
+    }
+
+    async function burnAllNft(token, holder)
+    {
+        const holderNftsBalance = await token.balanceNftsOf(holder, { from: treasury });
+        console.log(holderNftsBalance);
+        //await token.burnNft(holder, holderNftsBalance[0].id, { from: treasury });
     }
 
     const prettyBn = (bn) =>
@@ -378,7 +387,6 @@ contract("MultiToken", function (accounts)
             });
         });
     });
-
     //
     // Extended functionality
     //
@@ -422,6 +430,32 @@ contract("MultiToken", function (accounts)
                 expect(assetsSupply[MINERAL].amount).to.be.bignumber.equal(mintAmounts[MINERAL].muln(3));
                 expect(assetsSupply[GAS].amount).to.be.bignumber.equal(mintAmounts[GAS].muln(3));
                 expect(assetsSupply[ENERGON].amount).to.be.bignumber.equal(mintAmounts[ENERGON].muln(3));
+            });
+        });
+    }
+    //
+    // NFTs functionality
+    //
+    if (hasToTestNfts)
+    {
+        describe(`mint NFTs`, () =>
+        {
+            const nft0Id = new BN(0);
+            const nft0Uri = `${NFT_BASE_URI}/${nft0Id.toString()}.json`;
+            it(`give NFTs around`, async () =>
+            {
+                const nftId = "0";
+                await this.token.mintNft(tokenHolder, nft0Id, nft0Uri, data, { from: defaultOperatorA });
+            });
+
+            it(`check balance of NFTs`, async () =>
+            {
+                const { 0: nftCount, 1: holderNftsBalance } = await token.balanceNftsOf(tokenHolder, { from: tokenHolder });
+
+                //console.log(nftCount, holderNftsBalance);
+                expect(holderNftsBalance[0].id).to.be.bignumber.equal(nft0Id);
+                expect(holderNftsBalance[0].owner).equal(tokenHolder);
+                expect(holderNftsBalance[0].uri).equal(nft0Uri);
             });
         });
     }
