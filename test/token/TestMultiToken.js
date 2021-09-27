@@ -442,9 +442,13 @@ contract("MultiToken", function (accounts)
         {
             const nft0Id = new BN(0);
             const nft0Uri = `${NFT_BASE_URI}/${nft0Id.toString()}.json`;
+            it(`NFTs cannot be minted from non operators`, async () =>
+            {
+                await expectRevert.unspecified(this.token.mintNft(tokenHolder, nft0Id, nft0Uri, data, { from: tokenHolder }));
+            });
+
             it(`give NFTs around`, async () =>
             {
-                const nftId = "0";
                 await this.token.mintNft(tokenHolder, nft0Id, nft0Uri, data, { from: defaultOperatorA });
             });
 
@@ -453,9 +457,32 @@ contract("MultiToken", function (accounts)
                 const { 0: nftCount, 1: holderNftsBalance } = await token.balanceNftsOf(tokenHolder, { from: tokenHolder });
 
                 //console.log(nftCount, holderNftsBalance);
+                expect(nftCount).to.be.bignumber.equal(new BN(holderNftsBalance.length));
                 expect(holderNftsBalance[0].id).to.be.bignumber.equal(nft0Id);
                 expect(holderNftsBalance[0].owner).equal(tokenHolder);
                 expect(holderNftsBalance[0].uri).equal(nft0Uri);
+            });
+        });
+
+        describe(`burn NFTs`, () =>
+        {
+            it(`get NFTs balance and burn them all`, async () =>
+            {
+                const { 0: nftCount, 1: holderNftsBalance } = await token.balanceNftsOf(tokenHolder, { from: tokenHolder });
+                for (let i = 0; i < holderNftsBalance.length; ++i)
+                {
+                    const e = holderNftsBalance[i];
+                    await expectRevert.unspecified(this.token.burnNft(tokenHolder, e.id, { from: tokenHolder }));
+                    await this.token.burnNft(tokenHolder, e.id, { from: defaultOperatorA });
+                }
+            });
+
+            it(`check the tokenHolder has no more NFTs`, async () =>
+            {
+                const { 0: nftCount, 1: holderNftsBalance } = await token.balanceNftsOf(tokenHolder, { from: tokenHolder });
+
+                expect(nftCount).to.be.bignumber.equal(new BN(holderNftsBalance.length));
+                expect(new BN(0)).to.be.bignumber.equal(new BN(holderNftsBalance.length));
             });
         });
     }
