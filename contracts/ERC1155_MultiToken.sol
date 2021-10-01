@@ -283,6 +283,33 @@ contract ERC1155_MultiToken is
         ++_totalNftsSupply;
     }
 
+    function mintNftBatch(
+        address to,
+        uint256[] memory nftIds,
+        string[] memory uris,
+        bytes memory data
+    ) public virtual onlyRole(MINTER_ROLE) {
+        //
+        // Be sure non of the NFTs in the list were minted
+        //
+        uint256[] memory amounts = new uint256[](nftIds.length);
+        for (uint256 i = 0; i < nftIds.length; ++i) {
+            uint256 nftId = nftIds[i];
+            if (_nfts[nftId].owner != address(0)) {
+                revert("MultiToken: cannot mint already minted NFT");
+            }
+            amounts[i] = 1;
+            //
+            // mint double accounting (extra data and fast access)
+            //
+            _nfts[nftId] = Nft(nftId, to, uris[i]);
+            _nftOwners[to].push(nftId);
+            // Grow general counter
+            ++_totalNftsSupply;
+        }
+        _mintBatch(to, nftIds, amounts, data);
+    }
+
     /**
      * @dev Destroys `1` token of NFT type from `account`
      * off-chain databse must destroy this id or save it into a vault for the next user to buy
@@ -318,6 +345,46 @@ contract ERC1155_MultiToken is
                 ++_totalNftsSupply;
             }
         }
+    }
+
+    function burnNftBatch(address account, uint256[] memory nftIds)
+        public
+        virtual
+        onlyRole(BURN_ROLE)
+    {
+        //
+        // Be sure non of the NFTs match the owner
+        //
+        uint256[] memory amounts = new uint256[](nftIds.length);
+        uint256[] memory ids = new uint256[](nftIds.length);
+        for (uint256 i = 0; i < nftIds.length; ++i) {
+            uint256 nftId = nftIds[i];
+            if (_nfts[nftId].owner != account) {
+                revert(
+                    "MultiToken: cannot burn an NFT that doesn't match the owner"
+                );
+            }
+            amounts[i] = 1;
+            ids[i] = NFT;
+
+            // Search move and delete from owner array
+            for (uint256 j = 0; j < _nftOwners[account].length; ++j) {
+                if (_nftOwners[account][j] == nftId) {
+                    // Move the last element
+                    _nftOwners[account][j] = _nftOwners[account][
+                        _nftOwners[account].length - 1
+                    ];
+                    // Delete last element
+                    _nftOwners[account].pop();
+                    // Delete from the registry
+                    delete _nfts[nftId];
+                    // Reduce general counter
+                    --_totalNftsSupply;
+                }
+            }
+        }
+
+        _burnBatch(account, ids, amounts);
     }
 
     /**

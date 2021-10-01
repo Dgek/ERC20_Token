@@ -32,6 +32,15 @@ contract("MultiToken", function (accounts)
     const fakeTokenBatchIds = [new BN(2000), new BN(2010), new BN(2020)];
     const data = web3.utils.sha3('TestUnit');
 
+    const nft0Id = new BN(0);
+    const nft0Uri = `${NFT_BASE_URI}/${nft0Id.toString()}.json`;
+    const nft1Id = new BN(1);
+    const nft1Uri = `${NFT_BASE_URI}/${nft1Id.toString()}.json`;
+    const nft2Id = new BN(2);
+    const nft2Uri = `${NFT_BASE_URI}/${nft2Id.toString()}.json`;
+    const nftIdsBatch = [nft0Id, nft1Id, nft2Id];
+    const nftUrisBatch = [nft0Uri, nft1Uri, nft2Uri];
+
     async function burnAllAssets(token, holder)
     {
         const holderBatchBalances = await token.balanceOfBatch(
@@ -440,8 +449,6 @@ contract("MultiToken", function (accounts)
     {
         describe(`mint NFTs`, () =>
         {
-            const nft0Id = new BN(0);
-            const nft0Uri = `${NFT_BASE_URI}/${nft0Id.toString()}.json`;
             it(`NFTs cannot be minted from non operators`, async () =>
             {
                 await expectRevert.unspecified(this.token.mintNft(tokenHolder, nft0Id, nft0Uri, data, { from: tokenHolder }));
@@ -461,6 +468,39 @@ contract("MultiToken", function (accounts)
                 expect(holderNftsBalance[0].id).to.be.bignumber.equal(nft0Id);
                 expect(holderNftsBalance[0].owner).equal(tokenHolder);
                 expect(holderNftsBalance[0].uri).equal(nft0Uri);
+            });
+
+            it(`total NFTs supply`, async () =>
+            {
+                const totalNftsSupply = await token.totalNftsSupply({ from: tokenHolder });
+                expect(totalNftsSupply).to.be.bignumber.equal(new BN(1));
+            });
+        });
+
+        describe(`mint NFTs batch`, () =>
+        {
+            it(`NFTs batch cannot be minted from non operators`, async () =>
+            {
+                await expectRevert.unspecified(this.token.mintNftBatch(tokenHolder, nftIdsBatch, nftUrisBatch, { from: tokenHolder }));
+            });
+
+            it(`give NFTs around in batch`, async () =>
+            {
+                await this.token.mintNftBatch(tokenHolder, nftIdsBatch, nftUrisBatch, { from: defaultOperatorA });
+            });
+
+            it(`check balance of NFTs`, async () =>
+            {
+                const { 0: nftCount, 1: holderNftsBalance } = await token.balanceNftsOf(tokenHolder, { from: tokenHolder });
+
+                console.log(nftCount, holderNftsBalance);
+                expect(nftCount).to.be.bignumber.equal(new BN(holderNftsBalance.length));
+            });
+
+            it(`total NFTs supply`, async () =>
+            {
+                const totalNftsSupply = await token.totalNftsSupply({ from: tokenHolder });
+                expect(totalNftsSupply).to.be.bignumber.equal(new BN(nftIdsBatch.length));
             });
         });
 
