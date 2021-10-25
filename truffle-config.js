@@ -77,6 +77,32 @@ module.exports = {
             timeoutBlocks: 200,
             skipDryRun: true
         },
+        solana_devnet: {
+            provider: () =>
+            {
+                return new HDWalletProvider(
+                    process.env.SOLANA_MNEMONIC_DEVNET,
+                    process.env.SOLANA_DEVNET,
+                    process.env.WALLET_CHILD_NUMBER,
+                );
+            },
+            network_id: "*",
+            gas: 3000000,
+            gasPrice: 1000000000,
+        },
+        solana_testnet: {
+            provider: () =>
+            {
+                return new HDWalletProvider(
+                    process.env.SOLANA_MNEMONIC_TESTNET,
+                    process.env.SOLANA_TESTNET,
+                    process.env.WALLET_CHILD_NUMBER,
+                );
+            },
+            network_id: "*",
+            gas: 3000000,
+            gasPrice: 1000000000,
+        }
     },
     compilers: {
         solc: {

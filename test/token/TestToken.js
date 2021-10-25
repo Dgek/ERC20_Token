@@ -77,7 +77,6 @@ contract(process.env.TOKEN_NAME, (accounts) =>
 
     const travelInTimeForDays = async (daysToAdvance) =>
     {
-
         const blocksToAdvance = Math.round(BLOCKS_PER_DAY * daysToAdvance);
         const latest = await time.latestBlock();
         //console.log(`Current block: ${latest}`);
