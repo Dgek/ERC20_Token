@@ -6,8 +6,7 @@ const ERC777SenderRecipientMock = artifacts.require('ERC777SenderRecipientMockUp
 
 const { BN, expectEvent, expectRevert, singletons, constants, time } = require('@openzeppelin/test-helpers');
 const { ZERO_ADDRESS } = constants;
-const { expect } = require('chai');
-
+const { expect, expe } = require('chai');
 const {
     withNoERC777TokensSenderOrRecipient,
 } = require('./ERC777.behavior');
@@ -26,7 +25,7 @@ const testV1 = true;
 //
 // v3
 //
-const hasToTestFlexibleStaking = true;
+const hasToTestFlexibleStaking = process.env.NETWORK === "local";
 const hasToTestMaxSupply = true;
 
 const bn0 = new BN("0".repeat(18));
@@ -63,6 +62,22 @@ const prettyBn = (bn) =>
 contract(process.env.TOKEN_NAME, (accounts) =>
 {
     const [registryFunder, treasury, defaultOperatorA, defaultOperatorB, newOperator, anyone, treasuryOperator, stakeDelegatedTo] = accounts;
+    /*
+    [
+    '0x0798B6A6bFFaef1858Ab0692877163dD234984ED',
+    '0xC8D895A2A8AC4687CF337c25d58A07841bf34FE5',
+    '0xcc0c8d07064b033a330Ad916085954eea6Bd8e48',
+    '0x8E0aC6EdAD904Bfec16BDc2b7ecaA6b348308bd2',
+    '0xC5f4dEb10b2dB08C437e223034807ab9087188a3',
+    '0xA106E87b66D7673602d9bf18F364d165f4A9F627',
+    '0x24140E6a5Ee0d509f7af7a83482Cd292984c990e',
+    '0x7bd7991810c115F8F2749d7D140529E79551E475',
+
+    '0x35d57F9bC213065eBBCC75024077546f94AB1dA3',
+    '0x0BbF720B229eeC9D2037b909c1db3d626376C75e'
+    ]
+    */
+    //console.log(accounts);
     // Handy struct for future operations and tests
     const tokenArgs = {
         name: process.env.TOKEN_NAME,

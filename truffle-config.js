@@ -1,7 +1,6 @@
 require('dotenv').config();
 
 const HDWalletProvider = require("@truffle/hdwallet-provider");
-const gasUsage = 8e3;   // max per block
 //const fs = require('fs');
 //const mnemonic = fs.readFileSync(".secret").toString().trim();
 
@@ -9,7 +8,7 @@ module.exports = {
     // See <http://truffleframework.com/docs/advanced/configuration>
     // to customize your Truffle configuration!
     networks: {
-        development: {
+        local: {
             host: "127.0.0.1",
             port: 8545, // ganache-cli
             network_id: "*", // Match any network id
@@ -45,7 +44,6 @@ module.exports = {
                 );
             },
             network_id: 3,
-            gas: gasUsage,
             timeoutBlocks: 300,
             skipDryRun: false
         },
@@ -59,6 +57,8 @@ module.exports = {
                 );
             },
             network_id: 80001,
+            gas: 5500000,           // Gas sent with each transaction (default: ~6700000)
+            gasPrice: 7000000000,  // 7 gwei (in wei) (default: 100 gwei)
             confirmations: 2,
             timeoutBlocks: 200,
             skipDryRun: true

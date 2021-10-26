@@ -8,7 +8,7 @@ const TokenV2 = artifacts.require('ERC777_TokenV2');
 module.exports = async function (deployer, network, accounts)
 {
     const [registryFunder, treasury, defaultOperatorA, defaultOperatorB] = accounts;
-    if (network === 'development')
+    if (network === 'local')
     {
         // In a test environment an ERC777 token requires deploying an ERC1820 registry
         await singletons.ERC1820Registry(registryFunder); // founder
