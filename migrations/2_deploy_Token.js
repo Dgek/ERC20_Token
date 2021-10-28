@@ -29,7 +29,7 @@ module.exports = async function (deployer, network, accounts)
         [defaultOperatorA, defaultOperatorB], // operators
         initialSupply,
         maxSupply,
-        treasury, // treasury
+        treasury,
         dataInception,
         dataInception
     ];

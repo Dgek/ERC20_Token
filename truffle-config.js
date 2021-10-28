@@ -56,10 +56,10 @@ module.exports = {
                 );
             },
             network_id: 80001,
-            gas: 5500000,           // Gas sent with each transaction (default: ~6700000)
-            gasPrice: 7000000000,  // 7 gwei (in wei) (default: 100 gwei)
-            confirmations: 2,
-            timeoutBlocks: 200,
+            //gas: 5500000,           // Gas sent with each transaction (default: ~6700000)
+            //gasPrice: 7000000000,  // 7 gwei (in wei) (default: 100 gwei)
+            //confirmations: 2,
+            //timeoutBlocks: 200,
             skipDryRun: true
         },
         matic_mainnet: {
@@ -85,9 +85,9 @@ module.exports = {
                     process.env.WALLET_CHILD_NUMBER,
                 );
             },
-            network_id: "*",
-            gas: 3000000,
-            gasPrice: 1000000000,
+            network_id: "110",
+            //gas: 3000000,
+            //gasPrice: 1000000000,
         },
         solana_testnet: {
             provider: () =>
@@ -98,20 +98,21 @@ module.exports = {
                     process.env.WALLET_CHILD_NUMBER,
                 );
             },
-            network_id: "*",
-            gas: 3000000,
-            gasPrice: 1000000000,
+            network_id: "111",
+            //gas: 3000000,
+            //gasPrice: 1000000000,
         },
         harmony_testnet: {
             provider: () =>
             {
-                return new HDWalletProvider({
-                    mnemonic: process.env.HARMONY_MNEMONIC_TESTNET,
-                    providerOrUrl: process.env.HARMONY_TESTNET, // https://api.s0.t.hmny.io for mainnet
-                    //derivationPath: `m/44'/1023'/0'/0/` --> for whatever reason this changes the address and doesn't fit with the mnemonic
-                });
+                return new HDWalletProvider(
+                    process.env.HARMONY_MNEMONIC_TESTNET,
+                    process.env.HARMONY_TESTNET,
+                    process.env.WALLET_CHILD_NUMBER,
+                );
             },
             network_id: "1666700000",   // Shard 0
+            skipDryRun: true
         }
     },
     compilers: {
