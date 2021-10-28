@@ -22,7 +22,6 @@ module.exports = {
             gas: 10000000000000,
             gasPrice: 0x01
         },
-
         mainnet: {
             network_id: 1,
             provider: function ()
@@ -102,6 +101,17 @@ module.exports = {
             network_id: "*",
             gas: 3000000,
             gasPrice: 1000000000,
+        },
+        harmony_testnet: {
+            provider: () =>
+            {
+                return new HDWalletProvider({
+                    mnemonic: process.env.HARMONY_MNEMONIC_TESTNET,
+                    providerOrUrl: process.env.HARMONY_TESTNET, // https://api.s0.t.hmny.io for mainnet
+                    //derivationPath: `m/44'/1023'/0'/0/` --> for whatever reason this changes the address and doesn't fit with the mnemonic
+                });
+            },
+            network_id: "1666700000",   // Shard 0
         }
     },
     compilers: {

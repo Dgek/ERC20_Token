@@ -33,10 +33,11 @@ module.exports = async function (deployer, network, accounts)
         dataInception,
         dataInception
     ];
+    console.log(`Token Name: ${args[0]}\nSymbol: ${args[1]}\nOperator A: ${args[2][0]}\nOperator B: ${args[2][1]}\nInitial Supply: ${args[3].toString()}\nMax Supply: ${args[4].toString()}\nTreasury Account: ${args[5]}`);
 
     const instance = await deployProxy(Token, args, { deployer, initializer: 'initialize' });
     console.log(`Contract v1 deployed: ${instance.address}`);
-    console.log(`Token Name: ${process.env.TOKEN_NAME}\nSymbol: ${process.env.TOKEN_SYMBOL}\nTreasury Account: ${treasury}\nOperator A: ${defaultOperatorA}\nOperator B: ${defaultOperatorB}\nInitial Supply: ${initialSupply.toString()}\nMax Supply: ${maxSupply.toString()}`);
 
     await instance.unpause();
+    console.log(`Contract v1 unpaused!`);
 };
