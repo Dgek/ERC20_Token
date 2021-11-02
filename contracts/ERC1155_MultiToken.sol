@@ -27,9 +27,20 @@ contract ERC1155_MultiToken is
     Initializable,
     ContextUpgradeable,
     AccessControlEnumerableUpgradeable,
-    ERC1155Upgradeable,
     ERC1155PausableUpgradeable
 {
+    //
+    // Events
+    //
+
+    // Nft Burn
+    event NftBurn(address burnBy, address owner, uint256 nftId);
+
+    // Freeze
+    event AddressFrozen(address indexed addr);
+    event AddressUnfrozen(address indexed addr);
+    event FrozenAddressWiped(address indexed addr);
+    mapping(address => bool) internal _frozen;
     //
     // Additional roles
     //
@@ -37,19 +48,18 @@ contract ERC1155_MultiToken is
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURN_ROLE = keccak256("BURN_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant FREEZE_ROLE = keccak256("FREEZE_ROLE");
     //
     // Assets
     //
-    uint256 public constant MINERAL = 0;
-    uint256 public constant GAS = 1;
-    uint256 public constant ENERGON = 2;
-    uint256 public constant NFT = 3;
-    /* TODO: remove as is better simplify here and store offchain
-    uint256 public constant NFT_TERRAIN = 3001;
-    uint256 public constant NFT_BUILDING = 3002;
-    uint256 public constant NFT_UNIT = 3003;
-    uint256 public constant NFT_WEAPON = 3004;
-    */
+    uint256 public constant GEMS = 0;
+    uint256 public constant MINERAL = 1;
+    uint256 public constant GAS = 2;
+    uint256 public constant ENERGON = 3;
+    //
+    // NFTs
+    //
+    uint256 public constant NFT = 4;
     struct Asset {
         uint256 id;
         uint256 amount;
@@ -77,11 +87,24 @@ contract ERC1155_MultiToken is
     mapping(uint256 => Nft) private _nfts;
     mapping(address => uint256[]) private _nftOwners;
     uint256 private _totalNftsSupply;
+    //
+    // Governance Token
+    //
+    uint256 private _totalSupply;
+    uint256 private _maxSupply;
+    string private _name;
+    string private _symbol;
+
+    address private _treasuryAccount;
 
     function initialize(
         string memory uri,
         address treasury,
-        address[] memory defaultOperators
+        address[] memory defaultOperators,
+        uint256 initialSupplyOfGovernanceToken,
+        uint256 maxSupplyOfGovernanceToken,
+        string memory nameOfGovernanceToken,
+        string memory symbolOfGovernanceToken
     ) public virtual initializer {
         __MultiToken_init(uri);
         //
@@ -89,6 +112,7 @@ contract ERC1155_MultiToken is
         //
         _setupRole(MINTER_ROLE, treasury);
         _setupRole(BURN_ROLE, treasury);
+        _treasuryAccount = treasury;
 
         for (uint256 i = 0; i < defaultOperators.length; ++i) {
             _setupRole(MINTER_ROLE, defaultOperators[i]);
@@ -98,6 +122,18 @@ contract ERC1155_MultiToken is
         //
         // Init supply
         //
+
+        // Governance
+        mintGovernanceToken(
+            _treasuryAccount,
+            initialSupplyOfGovernanceToken,
+            "INITIAL_MINTING"
+        );
+        _maxSupply = maxSupplyOfGovernanceToken;
+        _name = nameOfGovernanceToken;
+        _symbol = symbolOfGovernanceToken;
+
+        // Assets
         _totalAssetsSupply.push(Asset(MINERAL, 0, super.uri(MINERAL))); // MINERAL
         _totalAssetsSupply.push(Asset(GAS, 0, super.uri(MINERAL))); // GAS
         _totalAssetsSupply.push(Asset(ENERGON, 0, super.uri(MINERAL))); // ENERGON
@@ -139,6 +175,122 @@ contract ERC1155_MultiToken is
         _;
     }
 
+    /**
+     * @dev Modifier to make a function callable only when is the treasury.
+     *
+     * Requirements:
+     *
+     * - Caller is the trasury account.
+     */
+    modifier onlyTreasury() {
+        require(
+            _treasuryAccount == _msgSender(),
+            "you are not the treasury account"
+        );
+        _;
+    }
+
+    /**
+     * @dev Modifier to make a function callable only when the contract is not paused.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     */
+    modifier whenNotPausedOrFrozen() {
+        require(!paused(), "the contract is paused");
+        require(!isFrozen(_msgSender()), "your account is frozen");
+        _;
+    }
+
+    /**
+     * @dev See {IERC777-name}.
+     */
+    function name() public view virtual returns (string memory) {
+        return _name;
+    }
+
+    /**
+     * @dev See {IERC777-symbol}.
+     */
+    function symbol() public view virtual returns (string memory) {
+        return _symbol;
+    }
+
+    /**
+     * @dev See {ERC20-decimals}.
+     *
+     * Always returns 18, as per the
+     * [ERC777 EIP](https://eips.ethereum.org/EIPS/eip-777#backward-compatibility).
+     */
+    function decimals() public pure virtual returns (uint8) {
+        return 18;
+    }
+
+    /**
+     * @dev See {IERC777-granularity}.
+     *
+     * This implementation always returns `1`.
+     */
+    function granularity() public view virtual returns (uint256) {
+        return 1;
+    }
+
+    /**
+     * @dev See {IERC777-totalSupply}.
+     */
+    function totalSupply() public view virtual returns (uint256) {
+        return _totalSupply;
+    }
+
+    /**
+     * @dev Returns the cap on the token's total supply.
+     */
+    function maxSupply() public view virtual returns (uint256) {
+        return _maxSupply;
+    }
+
+    /**
+     * @dev Creates `amount` new tokens for `to`, of the governance token.
+     *
+     * See {ERC1155-_mint}.
+     *
+     * Requirements:
+     *
+     * - the caller must have the `MINTER_ROLE`.
+     */
+    function mintGovernanceToken(
+        address to,
+        uint256 amount,
+        bytes memory data
+    ) public virtual onlyRole(MINTER_ROLE) whenNotPausedOrFrozen {
+        require(
+            _totalSupply + amount <= _maxSupply,
+            "Maximum capacity of the token exceeded"
+        );
+        _mint(to, GEMS, amount, data);
+        _totalSupply += amount;
+    }
+
+    /**
+     * @dev Destroys `amount` tokens of the governance token type from `account`
+     *
+     * Requirements:
+     *
+     * - `account` cannot be the zero address.
+     * - `account` must have at least `amount` tokens of token type `id`.
+     * - the caller must have the `BURN_ROLE`.
+     */
+    function burnGovernanceToken(address account, uint256 amount)
+        public
+        virtual
+        onlyRole(BURN_ROLE)
+        whenNotPausedOrFrozen
+    {
+        _burn(account, GEMS, amount);
+        _totalSupply -= amount;
+    }
+
     function totalAssetsSuply() public view returns (Asset[] memory) {
         return _totalAssetsSupply;
     }
@@ -157,7 +309,13 @@ contract ERC1155_MultiToken is
         uint256 id,
         uint256 amount,
         bytes memory data
-    ) public virtual onlyRole(MINTER_ROLE) onlyAssets(id) {
+    )
+        public
+        virtual
+        onlyRole(MINTER_ROLE)
+        onlyAssets(id)
+        whenNotPausedOrFrozen
+    {
         _mint(to, id, amount, data);
         _totalAssetsSupply[id].amount += amount;
     }
@@ -170,7 +328,13 @@ contract ERC1155_MultiToken is
         uint256[] memory ids,
         uint256[] memory amounts,
         bytes memory data
-    ) public virtual onlyRole(MINTER_ROLE) onlyAssetsInArray(ids) {
+    )
+        public
+        virtual
+        onlyRole(MINTER_ROLE)
+        onlyAssetsInArray(ids)
+        whenNotPausedOrFrozen
+    {
         _mintBatch(to, ids, amounts, data);
 
         for (uint256 i = 0; i < ids.length; ++i) {
@@ -191,7 +355,7 @@ contract ERC1155_MultiToken is
         address account,
         uint256 id,
         uint256 amount
-    ) public virtual onlyRole(BURN_ROLE) onlyAssets(id) {
+    ) public virtual onlyRole(BURN_ROLE) onlyAssets(id) whenNotPausedOrFrozen {
         _burn(account, id, amount);
         _totalAssetsSupply[id].amount -= amount;
     }
@@ -208,7 +372,13 @@ contract ERC1155_MultiToken is
         address account,
         uint256[] memory ids,
         uint256[] memory amounts
-    ) public virtual onlyRole(BURN_ROLE) onlyAssetsInArray(ids) {
+    )
+        public
+        virtual
+        onlyRole(BURN_ROLE)
+        onlyAssetsInArray(ids)
+        whenNotPausedOrFrozen
+    {
         _burnBatch(account, ids, amounts);
 
         for (uint256 i = 0; i < ids.length; ++i) {
@@ -264,7 +434,7 @@ contract ERC1155_MultiToken is
         uint256 nftId,
         string memory nftUri,
         bytes memory data
-    ) public virtual onlyRole(MINTER_ROLE) {
+    ) public virtual onlyRole(MINTER_ROLE) whenNotPausedOrFrozen {
         //
         // Check if was already minted
         //
@@ -272,10 +442,15 @@ contract ERC1155_MultiToken is
             _nfts[nftId].owner == address(0),
             "MultiToken: this nft was already minted"
         );
+        //
         // mint basic accounting
+        // NOTE: checking the balance of the id NFT will just give the total number of NFTs minted
+        //
         _mint(to, NFT, 1, data);
         //
-        // mint double accounting (extra data and fast access)
+        // mint parallel accounting (extra data and fast access)
+        // NOTE: here nftId will be assigned to an owner and will generates an uri with metadata and index/add the owner with a new nftId
+        // so checking an nft by id gives you the owner and metadata, checking the owner gives you all nfts that owns
         //
         _nfts[nftId] = Nft(nftId, to, nftUri);
         _nftOwners[to].push(nftId);
@@ -288,26 +463,37 @@ contract ERC1155_MultiToken is
         uint256[] memory nftIds,
         string[] memory uris,
         bytes memory data
-    ) public virtual onlyRole(MINTER_ROLE) {
+    ) public virtual onlyRole(MINTER_ROLE) whenNotPausedOrFrozen {
         //
         // Be sure non of the NFTs in the list were minted
         //
-        uint256[] memory amounts = new uint256[](nftIds.length);
+        uint256[] memory fakeAmounts = new uint256[](nftIds.length);
+        uint256[] memory fakeBatch = new uint256[](nftIds.length);
         for (uint256 i = 0; i < nftIds.length; ++i) {
             uint256 nftId = nftIds[i];
             if (_nfts[nftId].owner != address(0)) {
                 revert("MultiToken: cannot mint already minted NFT");
             }
-            amounts[i] = 1;
+            fakeAmounts[i] = 1;
+            fakeBatch[i] = NFT;
+        }
+        //
+        // mint basic accounting
+        // NOTE: checking the balance of the id NFT will just give the total number of NFTs minted of the user
+        _mintBatch(to, fakeBatch, fakeAmounts, data);
+        //
+        // If executed properly the mint batch and safe transfer we save data of the parallel accounting
+        //
+        for (uint256 i = 0; i < nftIds.length; ++i) {
+            uint256 nftId = nftIds[i];
             //
-            // mint double accounting (extra data and fast access)
+            // mint parallel accounting (extra data and fast access)
             //
             _nfts[nftId] = Nft(nftId, to, uris[i]);
             _nftOwners[to].push(nftId);
             // Grow general counter
             ++_totalNftsSupply;
         }
-        _mintBatch(to, nftIds, amounts, data);
     }
 
     /**
@@ -323,6 +509,7 @@ contract ERC1155_MultiToken is
         public
         virtual
         onlyRole(BURN_ROLE)
+        whenNotPausedOrFrozen
     {
         require(
             _nfts[nftId].owner == account,
@@ -342,7 +529,8 @@ contract ERC1155_MultiToken is
                 // Delete from the registry
                 delete _nfts[nftId];
                 // Reduce general counter
-                ++_totalNftsSupply;
+                --_totalNftsSupply;
+                emit NftBurn(_msgSender(), account, nftId);
             }
         }
     }
@@ -351,6 +539,7 @@ contract ERC1155_MultiToken is
         public
         virtual
         onlyRole(BURN_ROLE)
+        whenNotPausedOrFrozen
     {
         //
         // Be sure non of the NFTs match the owner
@@ -366,7 +555,16 @@ contract ERC1155_MultiToken is
             }
             amounts[i] = 1;
             ids[i] = NFT;
-
+        }
+        //
+        // Safe burn
+        //
+        _burnBatch(account, ids, amounts);
+        //
+        // If executed properly the burning mechanisim we remove data from the parallel accounting
+        //
+        for (uint256 i = 0; i < nftIds.length; ++i) {
+            uint256 nftId = nftIds[i];
             // Search move and delete from owner array
             for (uint256 j = 0; j < _nftOwners[account].length; ++j) {
                 if (_nftOwners[account][j] == nftId) {
@@ -380,11 +578,11 @@ contract ERC1155_MultiToken is
                     delete _nfts[nftId];
                     // Reduce general counter
                     --_totalNftsSupply;
+
+                    emit NftBurn(_msgSender(), account, nftId);
                 }
             }
         }
-
-        _burnBatch(account, ids, amounts);
     }
 
     /**
@@ -414,6 +612,45 @@ contract ERC1155_MultiToken is
     }
 
     /**
+     * @dev Freezes an address balance from being transferred.
+     * @param _addr The new address to freeze.
+     */
+    function freeze(address _addr) public onlyRole(FREEZE_ROLE) {
+        require(_addr != address(0), "you cannot freeze the zero address");
+        require(
+            _treasuryAccount == _addr,
+            "you cannot freeze the treasury account"
+        );
+        require(!_frozen[_addr], "address already _frozen");
+        _frozen[_addr] = true;
+        emit AddressFrozen(_addr);
+    }
+
+    /**
+     * @dev Unfreezes an address balance allowing transfer.
+     * @param _addr The new address to unfreeze.
+     */
+    function unfreeze(address _addr) public onlyRole(FREEZE_ROLE) {
+        require(_addr != address(0), "you cannot unfreezing the zero address");
+        require(
+            _treasuryAccount == _addr,
+            "you cannot unfreeze the treasury account"
+        );
+        require(_frozen[_addr], "address already unfrozen");
+        _frozen[_addr] = false;
+        emit AddressUnfrozen(_addr);
+    }
+
+    /**
+     * @dev Gets whether the address is currently _frozen.
+     * @param _addr The address to check if _frozen.
+     * @return A bool representing whether the given address is _frozen.
+     */
+    function isFrozen(address _addr) public view returns (bool) {
+        return _frozen[_addr];
+    }
+
+    /**
      * @dev See {IERC165-supportsInterface}.
      */
     function supportsInterface(bytes4 interfaceId)
@@ -426,6 +663,13 @@ contract ERC1155_MultiToken is
         return super.supportsInterface(interfaceId);
     }
 
+    /**
+     * @dev See {ERC1155-_beforeTokenTransfer}.
+     *
+     * Requirements:
+     *
+     * - the contract must not be paused.
+     */
     function _beforeTokenTransfer(
         address operator,
         address from,
@@ -433,12 +677,29 @@ contract ERC1155_MultiToken is
         uint256[] memory ids,
         uint256[] memory amounts,
         bytes memory data
-    )
-        internal
-        virtual
-        override(ERC1155Upgradeable, ERC1155PausableUpgradeable)
-    {
+    ) internal virtual override {
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
+        //
+        // Additional checks when it's the governance token
+        //
+        for (uint256 i = 0; i < ids.length; ++i) {
+            uint256 currentId = ids[i];
+            //
+            // Governance Token
+            //
+            if (currentId == GEMS) {
+                /*
+                uint256 amount = amounts[i];
+                //
+                // Total supply control
+                //
+                require(
+                    _totalSupply + amount <= _maxSupply,
+                    "Maximum capacity of the token exceeded"
+                );
+                */
+            }
+        }
     }
 
     function setUri(string memory newuri)

@@ -43,8 +43,11 @@ module.exports = {
                 );
             },
             network_id: 3,
-            timeoutBlocks: 300,
-            skipDryRun: false
+            confirmations: 2,    // # of confs to wait between deployments. (default: 0)
+            timeoutBlocks: 200,
+            gas: 5500000,
+            gasPrice: 7000000000,
+            skipDryRun: true
         },
         matic_testnet: {
             provider: function ()
@@ -56,10 +59,10 @@ module.exports = {
                 );
             },
             network_id: 80001,
+            confirmations: 2,
+            timeoutBlocks: 200,
             //gas: 5500000,           // Gas sent with each transaction (default: ~6700000)
             //gasPrice: 7000000000,  // 7 gwei (in wei) (default: 100 gwei)
-            //confirmations: 2,
-            //timeoutBlocks: 200,
             skipDryRun: true
         },
         matic_mainnet: {
@@ -85,7 +88,9 @@ module.exports = {
                     process.env.WALLET_CHILD_NUMBER,
                 );
             },
-            network_id: "110",
+            network_id: 110,
+            confirmations: 2,
+            timeoutBlocks: 200,
             //gas: 3000000,
             //gasPrice: 1000000000,
         },
@@ -98,7 +103,9 @@ module.exports = {
                     process.env.WALLET_CHILD_NUMBER,
                 );
             },
-            network_id: "111",
+            network_id: 111,
+            confirmations: 2,
+            timeoutBlocks: 200,
             //gas: 3000000,
             //gasPrice: 1000000000,
         },
@@ -111,9 +118,25 @@ module.exports = {
                     process.env.WALLET_CHILD_NUMBER,
                 );
             },
-            network_id: "1666700000",   // Shard 0
+            network_id: 1666700000,   // Shard 0
+            confirmations: 2,
+            timeoutBlocks: 200,
             skipDryRun: true
+        },
+        bsc_testnet: {
+            provider: () => new HDWalletProvider(
+                process.env.BSC_MNEMONIC_TESTNET,
+                process.env.BSC_TESTNET,
+                process.env.WALLET_CHILD_NUMBER),
+            network_id: 97,
+            confirmations: 2,
+            timeoutBlocks: 200,
+            gas: 5500000,
+            gasPrice: 7000000000,
+            skipDryRun: true,
+            websockets: true
         }
+
     },
     compilers: {
         solc: {
