@@ -65,6 +65,7 @@
     "homepage": "https://github.com/PaTiToMaSteR/ERC777_Token#readme",
     "devDependencies": {
         "@babel/core": "^7.15.5",
+        "@openzeppelin/contracts": "^4.4.1",
         "@openzeppelin/test-helpers": "^0.5.15",
         "@openzeppelin/truffle-upgrades": "^1.10.0",
         "@truffle/abi-utils": "^0.2.4",
