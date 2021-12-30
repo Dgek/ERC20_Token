@@ -1,4 +1,4 @@
-
+/*
 const { upgradeProxy } = require('@openzeppelin/truffle-upgrades');
 const { singletons, BN } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
@@ -9,8 +9,10 @@ const TokenV3 = artifacts.require('ERC777_TokenV3');
 const BLOCKS_PER_DAY = process.env.MATIC_BLOCKS_PER_DAY;
 const stakingDifficulty = new BN(BLOCKS_PER_DAY);
 const halvingBlocksNumber = new BN(BLOCKS_PER_DAY);
+*/
 module.exports = async function (deployer, network, accounts)
 {
+    /*
     const [registryFunder, treasury, defaultOperatorA, defaultOperatorB] = accounts;
     if (network === 'local')
     {
@@ -34,4 +36,5 @@ module.exports = async function (deployer, network, accounts)
     console.log(`Total Supply - v1: ${await (await instance.totalSupply()).toString()}`);
     console.log(`Is still treasury - v1: ${await instance.isTreasury(treasury)}`);
     console.log(`Staking Rewards difficulty set to: ${_difficulty.toString()} with halving at: ${_halvingBlocksNumber.toString()}`);
+    */
 };

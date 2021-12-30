@@ -11,8 +11,10 @@ const {
     withNoERC777TokensSenderOrRecipient,
 } = require('./ERC777.behavior');
 
-const initialSupply = new BN(process.env.TOKEN_INITIAL_SUPPLY);
-const maxSupply = new BN(process.env.TOKEN_MAX_SUPPLY);
+const initialSupply = new BN(process.env.TOKEN_TREASURY_SUPPLY + "0".repeat(18));
+const maxSupply = new BN(process.env.TOKEN_MAX_SUPPLY + "0".repeat(18));
+const idoSupply = new BN(process.env.TOKEN_IDO_SUPPLY + "0".repeat(18));
+
 
 const dataInception = web3.utils.sha3('inception');
 const dataInUserTransaction = web3.utils.sha3('OZ777TestdataInUserTransaction');
