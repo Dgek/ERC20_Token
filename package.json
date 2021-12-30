@@ -1,7 +1,7 @@
 {
-    "name": "token_erc777",
+    "name": "token_erc20",
     "version": "0.0.1",
-    "description": "ERC777 and ERC1156 tokens",
+    "description": "ERC20 Token and ERC20 IDO",
     "main": "truffle.js",
     "directories": {
         "test": "test"
@@ -10,13 +10,13 @@
         "setup": "nvm alias default lts/erbium && nvm use default && npm i && npm audit fix",
         "lint:sol": "solhint 'contracts/**/*.sol' && prettier -c 'contracts/**/*.sol'",
         "lint:sol:fix": "prettier --write \"contracts/**/*.sol\"",
-        "truffle-abi-Token": "mkdir -p ./bin && cat build/contracts/ERC777_Token.json | jq -c .abi > ./bin/ERC777_Token.abi",
-        "truffle-abi-TokenV2": "mkdir -p ./bin && cat build/contracts/ERC777_Tokenv2.json | jq -c .abi > ./bin/ERC777_TokenV2.abi",
-        "truffle-abi-TokenV3": "mkdir -p ./bin && cat build/contracts/ERC777_Tokenv3.json | jq -c .abi > ./bin/ERC777_TokenV3.abi",
+        "truffle-abi-ERC20": "mkdir -p ./bin && cat build/contracts/ERC20.json | jq -c .abi > ./bin/ERC20.abi",
+        "truffle-abi-ERC20_Token": "mkdir -p ./bin && cat build/contracts/ERC20_Token.json | jq -c .abi > ./bin/ERC20_Token.abi",
+        "truffle-abi-ERC20_IDO": "mkdir -p ./bin && cat build/contracts/ERC20_IDO.json | jq -c .abi > ./bin/ERC20_IDO.abi",
         "compile": "truffle compile",
         "re-compile-all": "truffle compile --all",
-        "flatten-Token": "truffle-flattener ./contracts/ERC777_Token.sol > ./flattened/ERC777_Token.sol",
-        "flatten-TokenV2": "truffle-flattener ./contracts/ERC777_TokenV2.sol > ./flattened/ERC777_TokenV2.sol",
+        "flatten-ERC20_Token": "truffle-flattener ./contracts/ERC20_Token.sol > ./flattened/ERC20_Token.sol",
+        "flatten-ERC20_IDO": "truffle-flattener ./contracts/ERC20_IDO.sol > ./flattened/ERC20_IDO.sol",
         "ganache": "ganache-cli -i 2222 -a 10",
         "ganache-devnet": "ganache-cli -i 2222 -a 10 -d -m 'stomach wage stem judge control beauty glue chapter cannon kitchen pilot orbit'",
         "---------- LOCAL MIGRATION ----------": "",
@@ -65,7 +65,6 @@
     "homepage": "https://github.com/PaTiToMaSteR/ERC777_Token#readme",
     "devDependencies": {
         "@babel/core": "^7.15.5",
-        "@openzeppelin/contracts-upgradeable": "^4.3.2",
         "@openzeppelin/test-helpers": "^0.5.15",
         "@openzeppelin/truffle-upgrades": "^1.10.0",
         "@truffle/abi-utils": "^0.2.4",
