@@ -1,22 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/utils/Context.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils//math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract ERC20_IDO is Context {
+contract ERC20_IDO is Ownable {
     using Address for address;
     using SafeERC20 for IERC20;
 
+    bool private _allowNativeToken;
     IERC20 private immutable _idoToken;
-    IERC20 private immutable _acceptedToken;
-    uint256 private _minBuyAmount;
-    uint256 private _maxBuyAmountPerOrder;
-    uint256 private _conversionRate;
-    address private _treasuryWallet;
-    address payable private _idoWallet;
-
+    address payable private _idoWalletToSaveBenefits;
+    IERC20[] private _acceptedStableCoins;
+    uint256 private _conversionRateForNativeToken;
+    uint256 private _conversionRateForStableCoins;
+    
     mapping(address => uint256) private _distribution;
     /**
      * Event for token purchase logging
@@ -33,103 +32,122 @@ contract ERC20_IDO is Context {
     );
 
     constructor(
+        bool allowNativeToken,
         IERC20 idoToken,
-        IERC20 acceptedToken,
-        uint256 minBuyAmount,
-        uint256 maxBuyAmountPerOrder,
-        address treasuryWallet,
-        address idoWallet,
-        uint256 conversionRate
+        address idoWalletToSaveBenefits,
+        IERC20[] memory acceptedStableCoins,
+        uint256 conversionRateForNativeToken,
+        uint256 conversionRateForStableCoins
     ) {
         require(
             address(idoToken) != address(0),
             "idoToken token is the zero address"
         );
-        require(
-            address(acceptedToken) != address(0),
-            "acceptedToken token is the zero address"
-        );
+        require(idoWalletToSaveBenefits != address(0), "idoWalletToSaveBenefits is not allowed to be zero");
+        for (uint256 i = 0; i < acceptedStableCoins.length; ++i) {
+            if (address(acceptedStableCoins[i]) == address(0)) {
+                revert("acceptedStableCoins has a zero address");
+            }
+        }
 
-        require(minBuyAmount > 0, "minBuyAmount is not allowed to be zero");
-        require(
-            maxBuyAmountPerOrder > 0,
-            "maxBuyAmountPerOrder is not allowed to be zero"
-        );
-        require(
-            treasuryWallet != address(0),
-            "treasuryWallet is not allowed to be zero"
-        );
-        require(idoWallet != address(0), "idoWallet is not allowed to be zero");
-        require(conversionRate > 0, "price is not allowed to be zero");
+        require(conversionRateForNativeToken > 0, "price is not allowed to be zero");
+        require(conversionRateForStableCoins > 0, "price is not allowed to be zero");
 
+        _allowNativeToken = allowNativeToken;
         _idoToken = idoToken;
-        _acceptedToken = acceptedToken;
+        _acceptedStableCoins = acceptedStableCoins;
 
-        _minBuyAmount = minBuyAmount;
-        _maxBuyAmountPerOrder = maxBuyAmountPerOrder;
-
-        _treasuryWallet = treasuryWallet;
-        _idoWallet = payable(idoWallet);
-        _conversionRate = conversionRate;
+        _idoWalletToSaveBenefits = payable(idoWalletToSaveBenefits);
+        _conversionRateForNativeToken = conversionRateForNativeToken;
+        _conversionRateForStableCoins = conversionRateForStableCoins;
     }
 
     receive() external payable {
-        buyTokens(_msgSender());
+        require(_allowNativeToken == true, "not allow to pay with native token, use the stable coins only");
+        
+        buyTokensWithNativeToken(_msgSender());
     }
 
     fallback() external payable {
-        buyTokens(_msgSender());
+        require(_allowNativeToken == true, "not allow to pay with native token, use the stable coins only");
+        buyTokensWithNativeToken(_msgSender());
     }
 
-    /**
-     * @dev low level token purchase ***DO NOT OVERRIDE***
-     * This function has a non-reentrancy guard, so it shouldn't be called by
-     * another `nonReentrant` function.
-     * @param beneficiary Recipient of the token purchase
-     */
-    function buyTokens(address beneficiary) public payable {
+    function buyTokensWithNativeToken(address beneficiary) public payable {
+        require(_allowNativeToken == true, "not allow to pay with native token, use the stable coins only");
         uint256 weiAmount = msg.value;
         _preValidatePurchase(beneficiary, weiAmount);
 
         // calculate token amount to be created
-        uint256 tokens = _getTokenAmount(weiAmount);
+        uint256 tokens = _getTokenAmountFromNativeToken(weiAmount);
 
-        _processPurchase(beneficiary, tokens);
+        _swapFromNativeToken(beneficiary, tokens);
         emit TokensPurchased(_msgSender(), beneficiary, weiAmount, tokens);
 
-        _updatePurchasingState(beneficiary, weiAmount);
-
-        _forwardFunds();
-        _postValidatePurchase(beneficiary, weiAmount);
+        _updatePurchasingState(beneficiary, tokens);
+        _postValidatePurchase(beneficiary, tokens);
     }
 
-    /**
-     * @dev Validation of an incoming purchase. Use require statements to revert state when conditions are not met.
-     * Use `super` in contracts that inherit from Crowdsale to extend their validations.
-     * Example from CappedCrowdsale.sol's _preValidatePurchase method:
-     *     super._preValidatePurchase(beneficiary, weiAmount);
-     *     require(weiRaised().add(weiAmount) <= cap);
-     * @param beneficiary Address performing the token purchase
-     * @param weiAmount Value in wei involved in the purchase
-     */
-    function _preValidatePurchase(address beneficiary, uint256 weiAmount)
+    function buyTokensWithStableCoins(
+        address beneficiary,
+        uint256 amount,
+        address acceptedToken
+    ) public payable {
+        IERC20 paymentToken = IERC20(acceptedToken);
+
+        _preValidatePurchaseWithAcceptedToken(
+            beneficiary,
+            amount,
+            paymentToken
+        );
+
+        // calculate token amount to be created
+        uint256 tokens = _getTokenAmountFromStableCoin(amount);
+
+        _swapFromStableCoins(
+            beneficiary,
+            amount,
+            tokens,
+            paymentToken
+        );
+        emit TokensPurchased(_msgSender(), beneficiary, amount, tokens);
+        _postValidatePurchase(beneficiary, amount);
+
+        _updatePurchasingState(beneficiary, amount);
+    }
+
+    function _preValidatePurchase(address beneficiary, uint256 amount)
         internal
         view
     {
-        require(
-            beneficiary != address(0),
-            "Crowdsale: beneficiary is the zero address"
-        );
-        require(weiAmount != 0, "Crowdsale: weiAmount is 0");
+        require(beneficiary != address(0), "beneficiary is the zero address");
+        require(amount != 0, "amount is 0");
         this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
     }
 
-    /**
-     * @dev Validation of an executed purchase. Observe state and use revert statements to undo rollback when valid
-     * conditions are not met.
-     * @param beneficiary Address performing the token purchase
-     * @param weiAmount Value in wei involved in the purchase
-     */
+    function _preValidatePurchaseWithAcceptedToken(
+        address beneficiary,
+        uint256 amount,
+        IERC20 paymentToken
+    ) internal view {
+        require(
+            this.balance() >= amount,
+            "balance of contract is not enough"
+        );
+        require(
+            paymentToken.balanceOf(msg.sender) >= amount,
+            "user balance of payment token is not >= amount"
+        );
+        require(beneficiary != address(0), "beneficiary is the zero address");
+        require(amount != 0, "amount is 0");
+        require(
+            paymentToken.allowance(msg.sender, address(this)) >= amount,
+            "insuficient allowance from user's payment token"
+        );
+
+        this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
+    }
+
     function _postValidatePurchase(address beneficiary, uint256 weiAmount)
         internal
         view
@@ -137,57 +155,65 @@ contract ERC20_IDO is Context {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    /**
-     * @dev Override to extend the way in which ether is converted to tokens.
-     * @param weiAmount Value in wei to be converted into tokens
-     * @return Number of tokens that can be purchased with the specified _weiAmount
-     */
-    function _getTokenAmount(uint256 weiAmount)
+    function _getTokenAmountFromNativeToken(uint256 amount)
         internal
         view
         returns (uint256)
     {
-        return weiAmount * _conversionRate;
+        return amount * _conversionRateForStableCoins;
     }
 
-    /**
-     * @dev Source of tokens. Override this method to modify the way in which the crowdsale ultimately gets and sends
-     * its tokens.
-     * @param beneficiary Address performing the token purchase
-     * @param tokenAmount Number of tokens to be emitted
-     */
-    function _deliverTokens(address beneficiary, uint256 tokenAmount) internal {
+    function _getTokenAmountFromStableCoin(uint256 amount)
+        internal
+        view
+        returns (uint256)
+    {
+        return amount * _conversionRateForStableCoins;
+    }
+
+    function _swapFromNativeToken(address beneficiary, uint256 tokenAmount) internal {
+        _idoWalletToSaveBenefits.transfer(msg.value);
         _idoToken.safeTransfer(beneficiary, tokenAmount);
     }
 
-    /**
-     * @dev Executed when a purchase has been validated and is ready to be executed. Doesn't necessarily emit/send
-     * tokens.
-     * @param beneficiary Address receiving the tokens
-     * @param tokenAmount Number of tokens to be purchased
-     */
-    function _processPurchase(address beneficiary, uint256 tokenAmount)
-        internal
-    {
-        _deliverTokens(beneficiary, tokenAmount);
+    function _swapFromStableCoins(
+        address beneficiary,
+        uint256 amount,
+        uint256 tokenAmount,
+        IERC20 acceptedToken
+    ) internal {
+        acceptedToken.safeTransferFrom(msg.sender, _idoWalletToSaveBenefits, amount);
+        _idoToken.safeTransfer(beneficiary, tokenAmount);
     }
 
-    /**
-     * @dev Override for extensions that require an internal state to check for validity (current user contributions,
-     * etc.)
-     * @param beneficiary Address receiving the tokens
-     * @param weiAmount Value in wei involved in the purchase
-     */
-    function _updatePurchasingState(address beneficiary, uint256 weiAmount)
+    function _updatePurchasingState(address beneficiary, uint256 tokens)
         internal
     {
-        _distribution[beneficiary] += weiAmount;
+        _distribution[beneficiary] += tokens;
     }
 
-    /**
-     * @dev Determines how ETH is stored/forwarded on purchases.
-     */
-    function _forwardFunds() internal {
-        _idoWallet.transfer(msg.value);
+    function setConversionRateForNativeToken(uint256 rate) external onlyOwner()
+    {
+        _conversionRateForNativeToken= rate;
+    }
+
+    function getConversionRateForNativeToken() external view returns(uint256)
+    {
+        return _conversionRateForNativeToken;
+    }
+
+    function setConversionRateForStableCoins(uint256 rate) external onlyOwner()
+    {
+        _conversionRateForStableCoins = rate;
+    }
+
+    function getConversionRateForStableCoins() external view returns(uint256)
+    {
+        return _conversionRateForStableCoins;
+    }
+
+    function balance() external view returns(uint accountBalance)
+    {
+        accountBalance = _idoToken.balanceOf(address(this));
     }
 }

@@ -22,7 +22,7 @@ module.exports = async function (deployer, network, accounts)
     else if (network === 'testnet')
     {
     }
-
+    
     await deployer.deploy(Erc20Token, name, symbol, initialSupply, maxSupply, treasury);
     process.env.TOKEN_ADDRESS = Erc20Token.address;
     console.log(`Erc20Token contract located at: ${process.env.TOKEN_ADDRESS}`);

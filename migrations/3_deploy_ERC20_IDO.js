@@ -8,32 +8,34 @@ const Erc20Token = artifacts.require('ERC20_Token');
 
 module.exports = async function (deployer, network, accounts)
 {
-    const [registryFunder, treasury, defaultOperatorA, defaultOperatorB] = accounts;
-    let idoToken;
-    let acceptedToken;
-    let minBuyAmount;
-    let maxBuyAmountPerOrder;
-    let idoWallet;
-    let conversionRate;
-
-    if (network === 'local')
-    {
-        idoToken = process.env.TOKEN_ADDRESS;
-        acceptedToken = process.env.TOKEN_ADDRESS;
-        minBuyAmount = 1;
-        maxBuyAmountPerOrder = 99;
-        idoWallet = treasury;
-        conversionRate = 2;
-    }
-    else if (network === 'testnet')
-    {
-    }
-
     const token = await Erc20Token.deployed();
-    const idoInstance = await deployer.deploy(idoContract, token.address, acceptedToken, minBuyAmount, maxBuyAmountPerOrder, treasury, idoWallet, conversionRate);
 
-    console.log(`Token contract located at: ${token.address}`);
+    const [registryFunder, treasury, defaultOperatorA, defaultOperatorB] = accounts;
+    let allowedNativeToken;
+    let idoToken;
+    let idoWalletToSaveBenefits;
+    let acceptedStableCoins;
+    let conversionRateForNativeToken;
+    let conversionRateForStableCoins;
+
+    if (network === 'local' || network === 'testnet')
+    {
+        allowedNativeToken = true;
+        idoToken = process.env.TOKEN_ADDRESS;
+        idoWalletToSaveBenefits = treasury;
+        acceptedStableCoins = [token.address, token.address, token.address, token.address];
+        conversionRateForNativeToken = 5;
+        conversionRateForStableCoins = 2;
+    }
+    //else if (network === 'testnet')
+    //{
+    //}
+    
+    await deployer.deploy(idoContract, allowedNativeToken, token.address, idoWalletToSaveBenefits, acceptedStableCoins, conversionRateForNativeToken, conversionRateForStableCoins);
+    const idoInstance = await idoContract.deployed();
+
     console.log(`IDO Contract deployed! - ${idoInstance.address}`);
+    console.log(`Token contract located at: ${token.address}`);
     //
     // Mint tokens for the IDO
     //
@@ -42,7 +44,7 @@ module.exports = async function (deployer, network, accounts)
     //
     // Test after deployment
     //
-    if (network === 'local')
+    if (network === 'local' || network === 'testnet')
     {
         const prettyBn = (bn) =>
         {
@@ -60,6 +62,7 @@ module.exports = async function (deployer, network, accounts)
             }
             return returnValue;
         }
-        console.log(prettyBn(await token.balanceOf(idoInstance.address)));
+        console.log(`Blanace of contract using token: ${prettyBn(await token.balanceOf(idoInstance.address))}`);
+        console.log(`Blanace of contract: ${prettyBn(await idoInstance.balance())}`);
     }
 };
