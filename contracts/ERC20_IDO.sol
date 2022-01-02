@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils//math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract ERC20_IDO is Ownable {
+contract ERC20_IDO is AccessControl {
+
+    bytes32 public constant ORACLE_ROLE = keccak256("ORACLE_ROLE");
     using Address for address;
     using SafeERC20 for IERC20;
 
@@ -13,8 +15,11 @@ contract ERC20_IDO is Ownable {
     IERC20 private immutable _idoToken;
     address payable private _idoWalletToSaveBenefits;
     IERC20[] private _acceptedStableCoins;
-    uint256 private _conversionRateForNativeToken;
-    uint256 private _conversionRateForStableCoins;
+    uint256 private _nativeTokenPriceInUsd;
+    uint256 private _conversionRateForIdoToken;
+
+    event LogNativeTokenPriceChange(uint256 price);
+    event LogConversionRateChange(uint256 rate);
     
     mapping(address => uint256) private _distribution;
     /**
@@ -34,15 +39,17 @@ contract ERC20_IDO is Ownable {
     constructor(
         bool allowNativeToken,
         IERC20 idoToken,
+        address oracleAccount,
         address idoWalletToSaveBenefits,
         IERC20[] memory acceptedStableCoins,
-        uint256 conversionRateForNativeToken,
-        uint256 conversionRateForStableCoins
+        uint256 nativeTokenPriceInUsd,
+        uint256 conversionRateForIdoToken
     ) {
         require(
             address(idoToken) != address(0),
             "idoToken token is the zero address"
         );
+        require(oracleAccount != address(0), "oracleAccount is not allowed to be zero");
         require(idoWalletToSaveBenefits != address(0), "idoWalletToSaveBenefits is not allowed to be zero");
         for (uint256 i = 0; i < acceptedStableCoins.length; ++i) {
             if (address(acceptedStableCoins[i]) == address(0)) {
@@ -50,16 +57,15 @@ contract ERC20_IDO is Ownable {
             }
         }
 
-        require(conversionRateForNativeToken > 0, "price is not allowed to be zero");
-        require(conversionRateForStableCoins > 0, "price is not allowed to be zero");
-
+        require(conversionRateForIdoToken > 0, "price is not allowed to be zero");
+        _setupRole(ORACLE_ROLE, oracleAccount);
         _allowNativeToken = allowNativeToken;
         _idoToken = idoToken;
         _acceptedStableCoins = acceptedStableCoins;
 
         _idoWalletToSaveBenefits = payable(idoWalletToSaveBenefits);
-        _conversionRateForNativeToken = conversionRateForNativeToken;
-        _conversionRateForStableCoins = conversionRateForStableCoins;
+        _nativeTokenPriceInUsd = nativeTokenPriceInUsd;
+        _conversionRateForIdoToken = conversionRateForIdoToken;
     }
 
     receive() external payable {
@@ -75,6 +81,7 @@ contract ERC20_IDO is Ownable {
 
     function buyTokensWithNativeToken(address beneficiary) public payable {
         require(_allowNativeToken == true, "not allow to pay with native token, use the stable coins only");
+        require(_allowNativeToken && _nativeTokenPriceInUsd > 0, "price of native token is not allowed to be zero");
         uint256 weiAmount = msg.value;
         _preValidatePurchase(beneficiary, weiAmount);
 
@@ -155,12 +162,12 @@ contract ERC20_IDO is Ownable {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function _getTokenAmountFromNativeToken(uint256 amount)
+    function _getTokenAmountFromNativeToken(uint256 weiAmount)
         internal
         view
         returns (uint256)
     {
-        return amount * _conversionRateForStableCoins;
+        return (_nativeTokenPriceInUsd * weiAmount * _conversionRateForIdoToken) / 1000000000000000000;
     }
 
     function _getTokenAmountFromStableCoin(uint256 amount)
@@ -168,7 +175,7 @@ contract ERC20_IDO is Ownable {
         view
         returns (uint256)
     {
-        return amount * _conversionRateForStableCoins;
+        return amount * _conversionRateForIdoToken;
     }
 
     function _swapFromNativeToken(address beneficiary, uint256 tokenAmount) internal {
@@ -192,27 +199,37 @@ contract ERC20_IDO is Ownable {
         _distribution[beneficiary] += tokens;
     }
 
-    function setConversionRateForNativeToken(uint256 rate) external onlyOwner()
+    function setPriceOfNativeToken(uint256 price) public onlyRole(ORACLE_ROLE)
     {
-        _conversionRateForNativeToken= rate;
+        _nativeTokenPriceInUsd = price;
+        emit LogNativeTokenPriceChange(_nativeTokenPriceInUsd);
     }
 
-    function getConversionRateForNativeToken() external view returns(uint256)
+    function getPriceOfNativeToken() public view returns(uint256)
     {
-        return _conversionRateForNativeToken;
+        return _nativeTokenPriceInUsd;
     }
 
-    function setConversionRateForStableCoins(uint256 rate) external onlyOwner()
+    function setConversionRateForIdoToken(uint256 rate) public onlyRole(ORACLE_ROLE)
     {
-        _conversionRateForStableCoins = rate;
+        _conversionRateForIdoToken = rate;
+        emit LogConversionRateChange(_conversionRateForIdoToken);
     }
 
-    function getConversionRateForStableCoins() external view returns(uint256)
+    function getConversionRateForIdoToken() public view returns(uint256)
     {
-        return _conversionRateForStableCoins;
+        return _conversionRateForIdoToken;
     }
 
-    function balance() external view returns(uint accountBalance)
+    function getTokenAmountFromNativeToken(uint256 weiAmount)
+        public
+        view
+        returns (uint256)
+    {
+        return _getTokenAmountFromNativeToken(weiAmount);
+    }
+
+    function balance() public view returns(uint accountBalance)
     {
         accountBalance = _idoToken.balanceOf(address(this));
     }

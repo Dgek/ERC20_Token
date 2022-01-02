@@ -10,7 +10,7 @@ module.exports = async function (deployer, network, accounts)
 {
     const token = await Erc20Token.deployed();
 
-    const [registryFunder, treasury, defaultOperatorA, defaultOperatorB] = accounts;
+    const [registryFunder, treasury, operator] = accounts;
     let allowedNativeToken;
     let idoToken;
     let idoWalletToSaveBenefits;
@@ -22,18 +22,20 @@ module.exports = async function (deployer, network, accounts)
     {
         allowedNativeToken = true;
         idoToken = process.env.TOKEN_ADDRESS;
+        oracleAccount = operator;
         idoWalletToSaveBenefits = treasury;
         acceptedStableCoins = [token.address, token.address, token.address, token.address];
-        conversionRateForNativeToken = 5;
-        conversionRateForStableCoins = 2;
+        conversionRateForNativeToken = "1234" + "0".repeat(18);
+        conversionRateForStableCoins = "4";
     }
     //else if (network === 'testnet')
     //{
     //}
     
-    await deployer.deploy(idoContract, allowedNativeToken, token.address, idoWalletToSaveBenefits, acceptedStableCoins, conversionRateForNativeToken, conversionRateForStableCoins);
+    await deployer.deploy(idoContract, allowedNativeToken, token.address, oracleAccount, idoWalletToSaveBenefits, acceptedStableCoins, conversionRateForNativeToken, conversionRateForStableCoins);
     const idoInstance = await idoContract.deployed();
 
+    console.log(`Operator Account - ${oracleAccount}`);
     console.log(`IDO Contract deployed! - ${idoInstance.address}`);
     console.log(`Token contract located at: ${token.address}`);
     //
@@ -62,7 +64,18 @@ module.exports = async function (deployer, network, accounts)
             }
             return returnValue;
         }
+        console.log(`operator account: ${operator}`);
+        await idoInstance.setPriceOfNativeToken("43213" + "0".repeat(17), { from: operator }); // 4321.3
+        const getPriceOfNativeToken = await idoInstance.getPriceOfNativeToken();
+        console.log(`getPriceOfNativeToken: ${prettyBn(getPriceOfNativeToken)}`);
+        
         console.log(`Blanace of contract using token: ${prettyBn(await token.balanceOf(idoInstance.address))}`);
         console.log(`Blanace of contract: ${prettyBn(await idoInstance.balance())}`);
+        console.log(`Blanace of contract: ${(await idoInstance.balance()).toString()}`);
+
+
+
+        console.log(`${await idoInstance.getTokenAmountFromNativeToken("1")}`);
+        console.log(`${await idoInstance.getTokenAmountFromNativeToken("1000000000000000000")}`);
     }
 };
