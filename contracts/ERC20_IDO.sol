@@ -199,37 +199,37 @@ contract ERC20_IDO is AccessControl {
         _distribution[beneficiary] += tokens;
     }
 
-    function setPriceOfNativeToken(uint256 price) public onlyRole(ORACLE_ROLE)
+    function setPriceOfNativeToken(uint256 price) external onlyRole(ORACLE_ROLE)
     {
         _nativeTokenPriceInUsd = price;
         emit LogNativeTokenPriceChange(_nativeTokenPriceInUsd);
     }
 
-    function getPriceOfNativeToken() public view returns(uint256)
+    function getPriceOfNativeToken() external view returns(uint256)
     {
         return _nativeTokenPriceInUsd;
     }
 
-    function setConversionRateForIdoToken(uint256 rate) public onlyRole(ORACLE_ROLE)
+    function setConversionRateForIdoToken(uint256 rate) external onlyRole(ORACLE_ROLE)
     {
         _conversionRateForIdoToken = rate;
         emit LogConversionRateChange(_conversionRateForIdoToken);
     }
 
-    function getConversionRateForIdoToken() public view returns(uint256)
+    function getConversionRateForIdoToken() external view returns(uint256)
     {
         return _conversionRateForIdoToken;
     }
 
     function getTokenAmountFromNativeToken(uint256 weiAmount)
-        public
+        external
         view
         returns (uint256)
     {
         return _getTokenAmountFromNativeToken(weiAmount);
     }
 
-    function balance() public view returns(uint accountBalance)
+    function balance() external view returns(uint accountBalance)
     {
         accountBalance = _idoToken.balanceOf(address(this));
     }

@@ -1,8 +1,3 @@
-// A key point to note is that in a testing environment an ERC777 token requires deploying an ERC1820 registry 
-// https://forum.openzeppelin.com/t/simple-erc777-token-example/746
-require('@openzeppelin/test-helpers/configure')({ provider: web3.currentProvider, environment: 'truffle' });
-const { BN } = require('@openzeppelin/test-helpers');
-
 const idoContract = artifacts.require('ERC20_IDO');
 const Erc20Token = artifacts.require('ERC20_Token');
 
@@ -41,7 +36,7 @@ module.exports = async function (deployer, network, accounts)
     //
     // Mint tokens for the IDO
     //
-    const idoSupply = new BN(process.env.TOKEN_IDO_SUPPLY + "0".repeat(18));
+    const idoSupply = process.env.TOKEN_IDO_SUPPLY + "0".repeat(18);
     await token.mint(idoInstance.address, idoSupply, { from: registryFunder });
     //
     // Test after deployment
@@ -64,7 +59,7 @@ module.exports = async function (deployer, network, accounts)
             }
             return returnValue;
         }
-        console.log(`operator account: ${operator}`);
+        console.log(`Setting initial price of native token`);
         await idoInstance.setPriceOfNativeToken("43213" + "0".repeat(17), { from: operator }); // 4321.3
         const getPriceOfNativeToken = await idoInstance.getPriceOfNativeToken();
         console.log(`getPriceOfNativeToken: ${prettyBn(getPriceOfNativeToken)}`);
