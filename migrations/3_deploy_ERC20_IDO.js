@@ -13,13 +13,26 @@ module.exports = async function (deployer, network, accounts)
     let conversionRateForNativeToken;
     let conversionRateForStableCoins;
 
-    if (network === 'local' || network === 'testnet')
+    if (network === 'local')
     {
         allowedNativeToken = true;
         idoToken = process.env.TOKEN_ADDRESS;
         oracleAccount = operator;
         idoWalletToSaveBenefits = treasury;
         acceptedStableCoins = [token.address, token.address, token.address, token.address];
+        conversionRateForNativeToken = "1234" + "0".repeat(18);
+        conversionRateForStableCoins = "4";
+    }
+    else if (network === 'testnet')
+    {
+        const USDT = "0x110a13fc3efe6a245b50102d2d79b3e76125ae83";
+        const USDC = "0x07865c6e87b9f70255377e024ace6630c1eaa37f";
+
+        allowedNativeToken = true;
+        idoToken = process.env.TOKEN_ADDRESS;
+        oracleAccount = operator;
+        idoWalletToSaveBenefits = treasury;
+        acceptedStableCoins = [USDT, USDC];
         conversionRateForNativeToken = "1234" + "0".repeat(18);
         conversionRateForStableCoins = "4";
     }
@@ -32,6 +45,7 @@ module.exports = async function (deployer, network, accounts)
 
     console.log(`Operator Account - ${oracleAccount}`);
     console.log(`IDO Contract deployed! - ${idoInstance.address}`);
+    console.log(`IDO Token - ${await idoInstance.getIdoTokenAddress()}`);
     console.log(`Token contract located at: ${token.address}`);
     //
     // Mint tokens for the IDO

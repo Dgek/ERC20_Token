@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract ERC20_IDO is AccessControl {
 
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant ORACLE_ROLE = keccak256("ORACLE_ROLE");
     using Address for address;
     using SafeERC20 for IERC20;
@@ -21,7 +22,15 @@ contract ERC20_IDO is AccessControl {
     event LogNativeTokenPriceChange(uint256 price);
     event LogConversionRateChange(uint256 rate);
     
-    mapping(address => uint256) private _distribution;
+    struct Beneficiary {
+        address addr;
+        address sentTo;
+        uint256 tokens;
+        uint256 paidWithNativeTokens;
+        uint256 paidWithStableCoins;
+    }
+    mapping(uint256=>Beneficiary) private _distribution;
+    uint256 private _distributionCount;
     /**
      * Event for token purchase logging
      * @param purchaser who paid for the tokens
@@ -58,6 +67,7 @@ contract ERC20_IDO is AccessControl {
         }
 
         require(conversionRateForIdoToken > 0, "price is not allowed to be zero");
+        _setupRole(ADMIN_ROLE, _msgSender());
         _setupRole(ORACLE_ROLE, oracleAccount);
         _allowNativeToken = allowNativeToken;
         _idoToken = idoToken;
@@ -66,6 +76,26 @@ contract ERC20_IDO is AccessControl {
         _idoWalletToSaveBenefits = payable(idoWalletToSaveBenefits);
         _nativeTokenPriceInUsd = nativeTokenPriceInUsd;
         _conversionRateForIdoToken = conversionRateForIdoToken;
+    }
+
+    function getIdoTokenAddress() external view returns(IERC20)
+    {
+        return _idoToken;
+    }
+
+    function setAcceptedStableCoins(IERC20[] memory acceptedStableCoins) external onlyRole(ADMIN_ROLE)
+    {
+        for (uint256 i = 0; i < acceptedStableCoins.length; ++i) {
+            if (address(acceptedStableCoins[i]) == address(0)) {
+                revert("acceptedStableCoins has a zero address");
+            }
+        }
+        _acceptedStableCoins = acceptedStableCoins;
+    }
+
+    function getAcceptedStableCoins() external view returns(IERC20[] memory)
+    {
+        return _acceptedStableCoins;
     }
 
     receive() external payable {
@@ -91,7 +121,7 @@ contract ERC20_IDO is AccessControl {
         _swapFromNativeToken(beneficiary, tokens);
         emit TokensPurchased(_msgSender(), beneficiary, weiAmount, tokens);
 
-        _updatePurchasingState(beneficiary, tokens);
+        _updatePurchasingState(_msgSender(), beneficiary, tokens, weiAmount, 0);
         _postValidatePurchase(beneficiary, tokens);
     }
 
@@ -120,7 +150,7 @@ contract ERC20_IDO is AccessControl {
         emit TokensPurchased(_msgSender(), beneficiary, amount, tokens);
         _postValidatePurchase(beneficiary, amount);
 
-        _updatePurchasingState(beneficiary, amount);
+        _updatePurchasingState(_msgSender(), beneficiary, tokens, 0, amount);
     }
 
     function _preValidatePurchase(address beneficiary, uint256 amount)
@@ -193,10 +223,23 @@ contract ERC20_IDO is AccessControl {
         _idoToken.safeTransfer(beneficiary, tokenAmount);
     }
 
-    function _updatePurchasingState(address beneficiary, uint256 tokens)
+    function _updatePurchasingState(address addr, address sentTo, uint256 tokens, uint256 paidWithNativeTokens, uint256 paidWithStableCoins)
         internal
     {
-        _distribution[beneficiary] += tokens;
+        Beneficiary memory beneficiary = Beneficiary(addr, sentTo, tokens, paidWithNativeTokens, paidWithStableCoins);
+        
+        _distribution[_distributionCount] = beneficiary;
+        ++_distributionCount;
+    }
+
+    function getDistribution() public view returns (Beneficiary[] memory)
+    {
+        Beneficiary[] memory ret = new Beneficiary[](_distributionCount);
+        for (uint256 i = 0; i < _distributionCount; ++i)
+        {
+            ret[i] = _distribution[i];
+        }
+        return ret;
     }
 
     function setPriceOfNativeToken(uint256 price) external onlyRole(ORACLE_ROLE)
