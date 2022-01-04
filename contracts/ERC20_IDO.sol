@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils//math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract ERC20_IDO is AccessControl {
@@ -13,7 +12,7 @@ contract ERC20_IDO is AccessControl {
     using SafeERC20 for IERC20;
 
     bool private _allowNativeToken;
-    IERC20 private immutable _idoToken;
+    uint256 private _numberOfTokensAvailable;
     address payable private _idoWalletToSaveBenefits;
     IERC20[] private _acceptedStableCoins;
     uint256 private _nativeTokenPriceInUsd;
@@ -47,17 +46,14 @@ contract ERC20_IDO is AccessControl {
 
     constructor(
         bool allowNativeToken,
-        IERC20 idoToken,
+        uint256 numberOfTokensAvailable,
         address oracleAccount,
         address idoWalletToSaveBenefits,
         IERC20[] memory acceptedStableCoins,
         uint256 nativeTokenPriceInUsd,
         uint256 conversionRateForIdoToken
     ) {
-        require(
-            address(idoToken) != address(0),
-            "idoToken token is the zero address"
-        );
+        require(numberOfTokensAvailable > 0, "numberOfTokensAvailable is not allowed to be zero");
         require(oracleAccount != address(0), "oracleAccount is not allowed to be zero");
         require(idoWalletToSaveBenefits != address(0), "idoWalletToSaveBenefits is not allowed to be zero");
         for (uint256 i = 0; i < acceptedStableCoins.length; ++i) {
@@ -65,22 +61,17 @@ contract ERC20_IDO is AccessControl {
                 revert("acceptedStableCoins has a zero address");
             }
         }
-
         require(conversionRateForIdoToken > 0, "price is not allowed to be zero");
+
+        _numberOfTokensAvailable = numberOfTokensAvailable;
         _setupRole(ADMIN_ROLE, _msgSender());
         _setupRole(ORACLE_ROLE, oracleAccount);
         _allowNativeToken = allowNativeToken;
-        _idoToken = idoToken;
         _acceptedStableCoins = acceptedStableCoins;
 
         _idoWalletToSaveBenefits = payable(idoWalletToSaveBenefits);
         _nativeTokenPriceInUsd = nativeTokenPriceInUsd;
         _conversionRateForIdoToken = conversionRateForIdoToken;
-    }
-
-    function getIdoTokenAddress() external view returns(IERC20)
-    {
-        return _idoToken;
     }
 
     function setAcceptedStableCoins(IERC20[] memory acceptedStableCoins) external onlyRole(ADMIN_ROLE)
@@ -113,12 +104,12 @@ contract ERC20_IDO is AccessControl {
         require(_allowNativeToken == true, "not allow to pay with native token, use the stable coins only");
         require(_allowNativeToken && _nativeTokenPriceInUsd > 0, "price of native token is not allowed to be zero");
         uint256 weiAmount = msg.value;
-        _preValidatePurchase(beneficiary, weiAmount);
 
         // calculate token amount to be created
         uint256 tokens = _getTokenAmountFromNativeToken(weiAmount);
+        _preValidatePurchase(beneficiary, weiAmount, tokens);
 
-        _swapFromNativeToken(beneficiary, tokens);
+        _payWithNativeToken();
         emit TokensPurchased(_msgSender(), beneficiary, weiAmount, tokens);
 
         _updatePurchasingState(_msgSender(), beneficiary, tokens, weiAmount, 0);
@@ -141,10 +132,8 @@ contract ERC20_IDO is AccessControl {
         // calculate token amount to be created
         uint256 tokens = _getTokenAmountFromStableCoin(amount);
 
-        _swapFromStableCoins(
-            beneficiary,
+        _payWithStableCoins(
             amount,
-            tokens,
             paymentToken
         );
         emit TokensPurchased(_msgSender(), beneficiary, amount, tokens);
@@ -153,12 +142,17 @@ contract ERC20_IDO is AccessControl {
         _updatePurchasingState(_msgSender(), beneficiary, tokens, 0, amount);
     }
 
-    function _preValidatePurchase(address beneficiary, uint256 amount)
+    function _preValidatePurchase(address beneficiary, uint256 weiAmount, uint256 tokens)
         internal
         view
     {
         require(beneficiary != address(0), "beneficiary is the zero address");
-        require(amount != 0, "amount is 0");
+        require(weiAmount != 0, "amount is 0");
+        require(
+            address(msg.sender).balance >= weiAmount,
+            "balance of user is not enough"
+        );
+        require(_numberOfTokensAvailable <= tokens);
         this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
     }
 
@@ -167,10 +161,6 @@ contract ERC20_IDO is AccessControl {
         uint256 amount,
         IERC20 paymentToken
     ) internal view {
-        require(
-            this.balance() >= amount,
-            "balance of contract is not enough"
-        );
         require(
             paymentToken.balanceOf(msg.sender) >= amount,
             "user balance of payment token is not >= amount"
@@ -200,27 +190,23 @@ contract ERC20_IDO is AccessControl {
         return (_nativeTokenPriceInUsd * weiAmount * _conversionRateForIdoToken) / 1000000000000000000;
     }
 
-    function _getTokenAmountFromStableCoin(uint256 amount)
+    function _getTokenAmountFromStableCoin(uint256 weiAmount)
         internal
         view
         returns (uint256)
     {
-        return amount * _conversionRateForIdoToken;
+        return weiAmount * _conversionRateForIdoToken;
     }
 
-    function _swapFromNativeToken(address beneficiary, uint256 tokenAmount) internal {
+    function _payWithNativeToken() internal {
         _idoWalletToSaveBenefits.transfer(msg.value);
-        _idoToken.safeTransfer(beneficiary, tokenAmount);
     }
 
-    function _swapFromStableCoins(
-        address beneficiary,
+    function _payWithStableCoins(
         uint256 amount,
-        uint256 tokenAmount,
         IERC20 acceptedToken
     ) internal {
         acceptedToken.safeTransferFrom(msg.sender, _idoWalletToSaveBenefits, amount);
-        _idoToken.safeTransfer(beneficiary, tokenAmount);
     }
 
     function _updatePurchasingState(address addr, address sentTo, uint256 tokens, uint256 paidWithNativeTokens, uint256 paidWithStableCoins)
@@ -272,8 +258,16 @@ contract ERC20_IDO is AccessControl {
         return _getTokenAmountFromNativeToken(weiAmount);
     }
 
-    function balance() external view returns(uint accountBalance)
+    function getTokenAmountFromStableCoin(uint256 weiAmount)
+        external
+        view
+        returns (uint256)
     {
-        accountBalance = _idoToken.balanceOf(address(this));
+        return _getTokenAmountFromStableCoin(weiAmount);
+    }
+
+    function balance() external view returns(uint256)
+    {
+        return _numberOfTokensAvailable;
     }
 }
