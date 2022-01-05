@@ -5,15 +5,33 @@ const IdoTreasury = artifacts.require('ERC20_IDO_Treasury');
 const USDT = artifacts.require('StableCoinTest');
 const USDC = artifacts.require('StableCoinTest');
 
+const prettyBn = (bn) =>
+{
+    let str = bn.toString();
+    let returnValue;
+
+    if (str.length >= 18)
+    {
+        returnValue = str.substr(0, str.length - 18).replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",");
+    }
+    else
+    {
+        const pad = 18 - str.length;
+        returnValue = "0." + "0".repeat(pad) + str;
+    }
+    return returnValue;
+}
+
 module.exports = async function (deployer, network, accounts)
 {
+    const isTestnet = network.indexOf('testnet') !== -1;
     const [registryFunder, treasury, operator] = accounts;
     //
     // ERC 20 Token
     //
     let idoTokenContract;
     const decimals = 18;
-    if (process.env.BLOCKCHAIN_NETWORK_TARGET_FOR_TOKEN === network)
+    if (network === 'local' || process.env.BLOCKCHAIN_NETWORK_TARGET_FOR_TOKEN === network)
     {
         let name = process.env.TOKEN_NAME;
         let symbol = process.env.TOKEN_SYMBOL;
@@ -29,9 +47,9 @@ module.exports = async function (deployer, network, accounts)
     // IDO Treasury
     //
     let idoTreasuryContract;
-    if (process.env.BLOCKCHAIN_NETWORK_TARGET_FOR_TOKEN === network)
+    if (network === 'local' || process.env.BLOCKCHAIN_NETWORK_TARGET_FOR_TOKEN === network)
     {
-        await deployer.deploy(IdoTreasury, idoTokenContract, operator);
+        await deployer.deploy(IdoTreasury, idoTokenContract.address, operator);
         idoTreasuryContract = await IdoTreasury.deployed();
         console.log(`IDO Treasury contract located at: ${idoTreasuryContract.address}`);
         //
@@ -39,7 +57,7 @@ module.exports = async function (deployer, network, accounts)
         //
         const idoSupply = process.env.TOKEN_IDO_SUPPLY + "0".repeat(decimals);
         await idoTokenContract.mint(idoTreasuryContract.address, idoSupply, { from: registryFunder });
-        console.log(`IDO Token - ${await idoTokenContract.getIdoTokenAddress()}`);
+        console.log(`IDO Token - ${await idoTreasuryContract.getIdoTokenAddress()}`);
         console.log(`IDO Treasiry balance: ${prettyBn(await idoTreasuryContract.balance())}`);
     }
     //
@@ -47,7 +65,7 @@ module.exports = async function (deployer, network, accounts)
     //
     let UsdtTokenContract;
     let UsdcTokenContract;
-    if (network === 'local' || network === 'testnet')
+    if (network === 'local' || isTestnet)
     {
         let name_usdt = "Wild USDT";
         let symbol_usdt = "USDT";
@@ -76,47 +94,30 @@ module.exports = async function (deployer, network, accounts)
         let conversionRateForNativeToken;
         let conversionRateForStableCoins;
 
-        if (network === 'local' || network === 'testnet')
+        if (network === 'local' || isTestnet)
         {
             acceptedStableCoins = [UsdtTokenContract.address, UsdcTokenContract.address];
 
             allowedNativeToken = true;
-            oracleAccount = operator;
             idoWalletToSaveBenefits = treasury;
             conversionRateForNativeToken = "1234" + "0".repeat(18);
             conversionRateForStableCoins = "4";
         }
         
         const supplyPerBlockchain = process.env.MAX_TOKEN_SUPPLY_PER_BLOCKCHAIN + "0".repeat(decimals);
-        await deployer.deploy(Ido, allowedNativeToken, supplyPerBlockchain, oracleAccount, idoWalletToSaveBenefits, acceptedStableCoins, conversionRateForNativeToken, conversionRateForStableCoins);
+        await deployer.deploy(Ido, allowedNativeToken, supplyPerBlockchain, operator, idoWalletToSaveBenefits, acceptedStableCoins, conversionRateForNativeToken, conversionRateForStableCoins);
         idoContract = await Ido.deployed();
 
         console.log(`IDO Contract - ${idoContract.address}`);
-        console.log(`Operator Account - ${oracleAccount}`);
+        console.log(`Operator Account - ${operator}`);
         console.log(`acceptedStableCoins: ${acceptedStableCoins}`);
     }
     //
     // Test after deployment
     //
     /*
-    if (network === 'local' || network === 'testnet')
+    if (network === 'local' || isTestnet)
     {
-        const prettyBn = (bn) =>
-        {
-            let str = bn.toString();
-            let returnValue;
-
-            if (str.length >= 18)
-            {
-                returnValue = str.substr(0, str.length - 18).replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",");
-            }
-            else
-            {
-                const pad = 18 - str.length;
-                returnValue = "0." + "0".repeat(pad) + str;
-            }
-            return returnValue;
-        }
         console.log(`Setting initial price of native token`);
         await idoContract.setPriceOfNativeToken("43213" + "0".repeat(17), { from: operator }); // 4321.3
         const getPriceOfNativeToken = await idoContract.getPriceOfNativeToken();
@@ -125,8 +126,6 @@ module.exports = async function (deployer, network, accounts)
         console.log(`Blanace of contract using token: ${prettyBn(await idoTokenContract.balanceOf(idoContract.address))}`);
         console.log(`Blanace of contract: ${prettyBn(await idoContract.balance())}`);
         console.log(`Blanace of contract: ${(await idoContract.balance()).toString()}`);
-
-
 
         console.log(`${await idoContract.getTokenAmountFromNativeToken("1")}`);
         console.log(`${await idoContract.getTokenAmountFromNativeToken("1000000000000000000")}`);

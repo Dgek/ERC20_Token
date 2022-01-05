@@ -47,7 +47,8 @@ module.exports = {
                 );
             },
             network_id: 80001,
-            confirmations: 2,
+            confirmations: 0,
+            timeoutBlocks: 200,
             skipDryRun: true
         },
         matic_mainnet: {
@@ -60,7 +61,8 @@ module.exports = {
                 );
             },
             network_id: 137,
-            confirmations: 2,
+            confirmations: 0,
+            timeoutBlocks: 200,
             skipDryRun: true
         },
         harmony_testnet: {
@@ -73,7 +75,8 @@ module.exports = {
                 );
             },
             network_id: 1666700000,   // Shard 0
-            confirmations: 2,
+            confirmations: 0,
+            timeoutBlocks: 200,
             skipDryRun: true
         },
         bsc_testnet: {
@@ -82,7 +85,8 @@ module.exports = {
                 process.env.BSC_TESTNET,
                 process.env.WALLET_CHILD_NUMBER),
             network_id: 97,
-            confirmations: 2,
+            confirmations: 0,
+            timeoutBlocks: 200,
             skipDryRun: true
         },
         avalanche_testnet: {
@@ -95,7 +99,22 @@ module.exports = {
                 );
             },
             network_id: "*",
-            confirmations: 2,
+            confirmations: 0,
+            timeoutBlocks: 200,
+            skipDryRun: true
+        },
+        fantom_testnet: {
+            provider: function ()
+            {
+                return new HDWalletProvider(
+                    process.env.FANTOM_MNEMONIC_TESTNET,
+                    process.env.FANTOM_TESTNET,
+                    process.env.WALLET_CHILD_NUMBER,
+                );
+            },
+            network_id: "*",
+            confirmations: 0,
+            timeoutBlocks: 200,
             skipDryRun: true
         },
     },

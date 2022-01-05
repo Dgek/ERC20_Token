@@ -20,12 +20,15 @@
         "eth-migrate-local": "truffle migrate --network local --reset",
         "---------- TESTNET MIGRATION ----------": "",
         "eth-migrate-testnet": "truffle migrate --network testnet --reset",
+        "avalanche-migrate-testnet": "truffle migrate --network avalanche_testnet --reset",
+        "fantom-migrate-testnet": "truffle migrate --network fantom_testnet --reset",
+        
         "matic-migrate-testnet": "truffle migrate --network matic_testnet --reset",
         "bsc-migrate-testnet": "truffle migrate --network bsc_testnet --reset",
         "harmony-migrate-testnet": "truffle migrate --network harmony_testnet --reset",
         "---------- MAINNET MIGRATION ----------": "",
+        "ethereum-migrate-mainnet": "truffle migrate --network mainnet",
         "matic-migrate-mainnet": "truffle migrate --network matic_mainnet",
-        "solana-migrate-mainnet": "truffle migrate --network solana_mainnet",
         "solium": "solium -d contracts/ --fix",
         "clean": "rm -rf ./build && rm -rf ./bin/*"
     },

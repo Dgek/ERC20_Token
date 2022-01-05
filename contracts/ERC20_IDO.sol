@@ -123,15 +123,15 @@ contract ERC20_IDO is AccessControl {
     ) public payable {
         IERC20 paymentToken = IERC20(acceptedToken);
 
-        _preValidatePurchaseWithAcceptedToken(
-            beneficiary,
-            amount,
-            paymentToken
-        );
-
         // calculate token amount to be created
         uint256 tokens = _getTokenAmountFromStableCoin(amount);
 
+        _preValidatePurchaseWithAcceptedToken(
+            beneficiary,
+            amount,
+            tokens,
+            paymentToken
+        );
         _payWithStableCoins(
             amount,
             paymentToken
@@ -152,13 +152,14 @@ contract ERC20_IDO is AccessControl {
             address(msg.sender).balance >= weiAmount,
             "balance of user is not enough"
         );
-        require(_numberOfTokensAvailable <= tokens);
+        require(_numberOfTokensAvailable >= tokens, "there's not enough tokens available");
         this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
     }
 
     function _preValidatePurchaseWithAcceptedToken(
         address beneficiary,
         uint256 amount,
+        uint256 tokens,
         IERC20 paymentToken
     ) internal view {
         require(
@@ -171,6 +172,7 @@ contract ERC20_IDO is AccessControl {
             paymentToken.allowance(msg.sender, address(this)) >= amount,
             "insuficient allowance from user's payment token"
         );
+        require(_numberOfTokensAvailable >= tokens, "there's not enough tokens available");
 
         this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
     }
@@ -216,6 +218,8 @@ contract ERC20_IDO is AccessControl {
         
         _distribution[_distributionCount] = beneficiary;
         ++_distributionCount;
+
+        _numberOfTokensAvailable -= tokens;
     }
 
     function getDistribution() public view returns (Beneficiary[] memory)
